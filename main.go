@@ -22,6 +22,7 @@ func main() {
 	searchMargin := flag.Int("search-margin", 40, "Search margin in pixels")
 	confidence := flag.Float64("confidence", 0.6, "Min confidence threshold (0-1)")
 	startFrame := flag.Int("start-frame", 0, "Start tracking from this frame")
+	showAxes := flag.Bool("axes", false, "Display X/Y axes through the tracking point")
 	flag.Parse()
 
 	if *videoPath == "" {
@@ -95,6 +96,7 @@ func main() {
 
 		// Build overlay for display
 		overlay := buildOverlay(t, tp, cfg, frameNum, info.FrameCount)
+		overlay.ShowAxes = *showAxes
 		key := win.ShowFrame(frame, overlay, 1)
 
 		switch {

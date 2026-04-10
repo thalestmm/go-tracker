@@ -13,6 +13,7 @@ type Overlay struct {
 	ROIRect    image.Rectangle
 	Confidence float64
 	Status     string
+	ShowAxes   bool
 }
 
 type Window struct {
@@ -79,6 +80,15 @@ func (w *Window) ShowFrame(frame gocv.Mat, overlay *Overlay, waitMs int) int {
 		p := overlay.TrackPos
 		gocv.Line(&display, image.Pt(p.X-10, p.Y), image.Pt(p.X+10, p.Y), green, 2)
 		gocv.Line(&display, image.Pt(p.X, p.Y-10), image.Pt(p.X, p.Y+10), green, 2)
+
+		// Full-frame axes through tracking point
+		if overlay.ShowAxes {
+			cyan := color.RGBA{255, 255, 0, 0}
+			w := display.Cols()
+			h := display.Rows()
+			gocv.Line(&display, image.Pt(0, p.Y), image.Pt(w, p.Y), cyan, 1)
+			gocv.Line(&display, image.Pt(p.X, 0), image.Pt(p.X, h), cyan, 1)
+		}
 
 		// ROI rectangle
 		if !overlay.ROIRect.Empty() {
