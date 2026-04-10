@@ -56,7 +56,7 @@ func main() {
 	}
 
 	fmt.Println("Click on the point to track, then tracking begins.")
-	clickPt := win.WaitClick(frame, "Click the point to track")
+	clickPt := win.WaitClick(frame, "Click the point to track", nil)
 	fmt.Printf("Selected point: (%d, %d)\n", clickPt.X, clickPt.Y)
 
 	cfg := tracker.Config{
@@ -85,7 +85,7 @@ func main() {
 
 		if state == tracker.StatePausedForRealignment {
 			fmt.Printf("Lost track at frame %d. Click to realign.\n", frameNum)
-			realign(win, t, frame)
+			realign(win, t, frame, *showAxes)
 			// Re-process this frame with new template
 			state, tp = t.ProcessFrame(frame, frameNum)
 		}
@@ -105,7 +105,7 @@ func main() {
 			stopped = true
 		case key == 32 || key == 'p' || key == 'P': // Space or P
 			fmt.Println("Manual realignment requested.")
-			realign(win, t, frame)
+			realign(win, t, frame, *showAxes)
 		}
 	}
 
@@ -121,8 +121,16 @@ func main() {
 	fmt.Printf("Exported %d points to %s\n", len(points), *outputPath)
 }
 
-func realign(win *gui.Window, t *tracker.Tracker, frame gocv.Mat) {
-	pt := win.WaitClick(frame, "Click to realign tracking point")
+func realign(win *gui.Window, t *tracker.Tracker, frame gocv.Mat, showAxes bool) {
+	var pauseOverlay *gui.Overlay
+	if showAxes {
+		pauseOverlay = &gui.Overlay{
+			TrackPos: t.LastPos(),
+			ShowAxes: true,
+			Status:   "PAUSED - Click to realign",
+		}
+	}
+	pt := win.WaitClick(frame, "Click to realign tracking point", pauseOverlay)
 	t.Realign(frame, pt.X, pt.Y)
 	fmt.Printf("Realigned to (%d, %d)\n", pt.X, pt.Y)
 }

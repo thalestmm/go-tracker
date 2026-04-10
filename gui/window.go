@@ -39,9 +39,14 @@ func New(title string) *Window {
 }
 
 // WaitClick displays a frame with a prompt and blocks until the user clicks.
-func (w *Window) WaitClick(frame gocv.Mat, prompt string) image.Point {
+// If overlay is non-nil, it is drawn on the frame (useful for showing axes at last position during pause).
+func (w *Window) WaitClick(frame gocv.Mat, prompt string, overlay *Overlay) image.Point {
 	display := frame.Clone()
 	defer display.Close()
+
+	if overlay != nil {
+		w.drawOverlay(&display, overlay)
+	}
 
 	gocv.PutText(&display, prompt, image.Pt(10, 30),
 		gocv.FontHersheyPlain, 1.0,
@@ -65,6 +70,46 @@ func (w *Window) WaitClick(frame gocv.Mat, prompt string) image.Point {
 	}
 }
 
+func (w *Window) drawOverlay(display *gocv.Mat, overlay *Overlay) {
+	green := color.RGBA{0, 255, 0, 0}
+	yellow := color.RGBA{255, 255, 0, 0}
+	red := color.RGBA{0, 0, 255, 0}
+
+	// Crosshair at track position
+	p := overlay.TrackPos
+	gocv.Line(display, image.Pt(p.X-10, p.Y), image.Pt(p.X+10, p.Y), green, 2)
+	gocv.Line(display, image.Pt(p.X, p.Y-10), image.Pt(p.X, p.Y+10), green, 2)
+
+	// Full-frame axes through tracking point
+	if overlay.ShowAxes {
+		cyan := color.RGBA{255, 255, 0, 0}
+		fw := display.Cols()
+		fh := display.Rows()
+		gocv.Line(display, image.Pt(0, p.Y), image.Pt(fw, p.Y), cyan, 1)
+		gocv.Line(display, image.Pt(p.X, 0), image.Pt(p.X, fh), cyan, 1)
+	}
+
+	// ROI rectangle
+	if !overlay.ROIRect.Empty() {
+		gocv.Rectangle(display, overlay.ROIRect, yellow, 1)
+	}
+
+	// Confidence text
+	confColor := green
+	if overlay.Confidence < 0.7 {
+		confColor = red
+	}
+	confStr := fmt.Sprintf("Conf: %.2f", overlay.Confidence)
+	gocv.PutText(display, confStr, image.Pt(10, 25),
+		gocv.FontHersheyPlain, 0.8, confColor, 1)
+
+	// Status text
+	if overlay.Status != "" {
+		gocv.PutText(display, overlay.Status, image.Pt(10, 50),
+			gocv.FontHersheyPlain, 0.8, yellow, 1)
+	}
+}
+
 // ShowFrame displays the frame with optional tracking overlay.
 // Returns the key pressed (or -1 if none).
 func (w *Window) ShowFrame(frame gocv.Mat, overlay *Overlay, waitMs int) int {
@@ -72,43 +117,7 @@ func (w *Window) ShowFrame(frame gocv.Mat, overlay *Overlay, waitMs int) int {
 	defer display.Close()
 
 	if overlay != nil {
-		green := color.RGBA{0, 255, 0, 0}
-		yellow := color.RGBA{255, 255, 0, 0}
-		red := color.RGBA{0, 0, 255, 0}
-
-		// Crosshair at track position
-		p := overlay.TrackPos
-		gocv.Line(&display, image.Pt(p.X-10, p.Y), image.Pt(p.X+10, p.Y), green, 2)
-		gocv.Line(&display, image.Pt(p.X, p.Y-10), image.Pt(p.X, p.Y+10), green, 2)
-
-		// Full-frame axes through tracking point
-		if overlay.ShowAxes {
-			cyan := color.RGBA{255, 255, 0, 0}
-			w := display.Cols()
-			h := display.Rows()
-			gocv.Line(&display, image.Pt(0, p.Y), image.Pt(w, p.Y), cyan, 1)
-			gocv.Line(&display, image.Pt(p.X, 0), image.Pt(p.X, h), cyan, 1)
-		}
-
-		// ROI rectangle
-		if !overlay.ROIRect.Empty() {
-			gocv.Rectangle(&display, overlay.ROIRect, yellow, 1)
-		}
-
-		// Confidence text
-		confColor := green
-		if overlay.Confidence < 0.7 {
-			confColor = red
-		}
-		confStr := fmt.Sprintf("Conf: %.2f", overlay.Confidence)
-		gocv.PutText(&display, confStr, image.Pt(10, 25),
-			gocv.FontHersheyPlain, 0.8, confColor, 1)
-
-		// Status text
-		if overlay.Status != "" {
-			gocv.PutText(&display, overlay.Status, image.Pt(10, 50),
-				gocv.FontHersheyPlain, 0.8, yellow, 1)
-		}
+		w.drawOverlay(&display, overlay)
 	}
 
 	w.win.IMShow(display)
