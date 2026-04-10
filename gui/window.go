@@ -51,7 +51,7 @@ func (w *Window) WaitClick(frame gocv.Mat, prompt string, overlay *Overlay) (ima
 
 	gocv.PutText(&display, prompt, image.Pt(10, 30),
 		gocv.FontHersheyPlain, 1.0,
-		color.RGBA{0, 255, 0, 0}, 2)
+		color.RGBA{0, 255, 0, 0}, 1)
 
 	w.win.IMShow(display)
 
