@@ -80,7 +80,9 @@ func main() {
 	var framesProcessed int
 
 	if *turbo {
-		fmt.Println("Tracking (turbo)... auto-pauses on lost track")
+		fmt.Println("Tracking (turbo mode)... auto-pauses on lost track")
+		win.ShowTurboLabel(frame)
+		win.PollKey(1)
 	} else {
 		fmt.Println("Tracking... ESC=stop, Space=pause")
 	}
