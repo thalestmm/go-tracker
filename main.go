@@ -31,6 +31,7 @@ func main() {
 	exportConf := flag.Bool("export-confidence", false, "Include confidence column in CSV output")
 	calibrate := flag.Bool("calibrate", false, "Calibrate pixel-to-real-world scale before tracking")
 	scaleUnit := flag.String("unit", "m", "Unit label for calibrated output (e.g. m, cm, mm)")
+	showGraph := flag.Bool("graph", false, "Show real-time X(t) and Y(t) graph window")
 	flag.Parse()
 
 	// --- 1.1: Input validation ---
@@ -136,6 +137,15 @@ func main() {
 	var totalDecode, totalTrack, totalDisplay time.Duration
 	var framesProcessed int
 
+	// Graph window for real-time plotting
+	var graphWin *gui.GraphWindow
+	var graphTimes []float64
+	var graphXs, graphYs []int
+	if *showGraph {
+		graphWin = gui.NewGraphWindow("GoTracker - Graph")
+		defer graphWin.Close()
+	}
+
 	if *turbo {
 		fmt.Println("Tracking (turbo mode)... auto-pauses on lost track")
 		win.ShowTurboLabel(frame)
@@ -168,6 +178,14 @@ func main() {
 		}
 
 		framesProcessed++
+
+		// Update graph with new data point
+		if graphWin != nil && tp != nil {
+			graphTimes = append(graphTimes, tp.Time)
+			graphXs = append(graphXs, tp.X)
+			graphYs = append(graphYs, tp.Y)
+			graphWin.Update(graphTimes, graphXs, graphYs)
+		}
 
 		if !*turbo {
 			displayStart := time.Now()
