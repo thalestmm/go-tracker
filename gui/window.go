@@ -8,6 +8,20 @@ import (
 	"gocv.io/x/gocv"
 )
 
+type PauseAction int
+
+const (
+	PauseResume    PauseAction = iota // Space: resume tracking
+	PauseClick                        // Mouse click: realign
+	PauseStepFwd                      // Right arrow: step forward
+	PauseStepBack                     // Left arrow: step backward
+)
+
+type PauseResult struct {
+	Action   PauseAction
+	ClickPt  image.Point
+}
+
 type Overlay struct {
 	TrackPos   image.Point
 	ROIRect    image.Rectangle
@@ -70,6 +84,47 @@ func (w *Window) WaitClick(frame gocv.Mat, prompt string, overlay *Overlay) (ima
 		select {
 		case pt := <-w.clickCh:
 			return pt, true
+		default:
+		}
+	}
+}
+
+// WaitPause displays a frame with overlay and waits for user action:
+// Space=resume, Click=realign, Left/Right arrows=step frame.
+func (w *Window) WaitPause(frame gocv.Mat, overlay *Overlay) PauseResult {
+	display := frame.Clone()
+	defer display.Close()
+
+	if overlay != nil {
+		w.drawOverlay(&display, overlay)
+	}
+
+	prompt := "Click=realign  Space=resume  Arrows=step"
+	gocv.PutText(&display, prompt, image.Pt(10, 30),
+		gocv.FontHersheyPlain, 1.0,
+		color.RGBA{0, 255, 0, 0}, 1)
+
+	w.win.IMShow(display)
+
+	// Drain stale clicks
+	select {
+	case <-w.clickCh:
+	default:
+	}
+
+	for {
+		key := w.win.WaitKey(30)
+		switch {
+		case key == 32 || key == 'p' || key == 'P':
+			return PauseResult{Action: PauseResume}
+		case key == 2 || key == 81: // Left arrow (macOS / Linux)
+			return PauseResult{Action: PauseStepBack}
+		case key == 3 || key == 83: // Right arrow (macOS / Linux)
+			return PauseResult{Action: PauseStepFwd}
+		}
+		select {
+		case pt := <-w.clickCh:
+			return PauseResult{Action: PauseClick, ClickPt: pt}
 		default:
 		}
 	}

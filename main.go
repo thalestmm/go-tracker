@@ -183,7 +183,7 @@ func main() {
 
 		if state == tracker.StatePausedForRealignment {
 			fmt.Printf("Lost track at frame %d. Click to realign.\n", frameNum)
-			realign(win, t, frame, *showAxes)
+			frameNum = pauseLoop(win, t, reader, &frame, frameNum, *showAxes)
 			state, tp = t.ProcessFrame(frame, frameNum)
 		}
 
@@ -222,8 +222,8 @@ func main() {
 				fmt.Println("Stopped by user.")
 				stopped = true
 			case key == 32 || key == 'p' || key == 'P': // Space or P
-				fmt.Println("Manual realignment requested.")
-				realign(win, t, frame, *showAxes)
+				fmt.Println("Paused.")
+				frameNum = pauseLoop(win, t, reader, &frame, frameNum, *showAxes)
 			}
 		}
 	}
@@ -276,23 +276,48 @@ func main() {
 	}
 }
 
-func realign(win *gui.Window, t *tracker.Tracker, frame gocv.Mat, showAxes bool) {
-	var pauseOverlay *gui.Overlay
-	if showAxes {
-		pauseOverlay = &gui.Overlay{
+// pauseLoop handles the pause state: user can resume, realign, or step frames.
+// Returns the (possibly updated) frame number.
+func pauseLoop(win *gui.Window, t *tracker.Tracker, reader *video.Reader, frame *gocv.Mat, frameNum int, showAxes bool) int {
+	for {
+		overlay := &gui.Overlay{
 			TrackPos: t.LastPos(),
-			ShowAxes: true,
-			Status:   "PAUSED - Click to realign, Space to resume",
+			ShowAxes: showAxes,
+			Status:   fmt.Sprintf("PAUSED - Frame %d", frameNum),
+		}
+
+		result := win.WaitPause(*frame, overlay)
+
+		switch result.Action {
+		case gui.PauseResume:
+			fmt.Println("Resumed from last position.")
+			t.Resume()
+			return frameNum
+		case gui.PauseClick:
+			t.Realign(*frame, result.ClickPt.X, result.ClickPt.Y)
+			fmt.Printf("Realigned to (%d, %d)\n", result.ClickPt.X, result.ClickPt.Y)
+			return frameNum
+		case gui.PauseStepFwd:
+			if reader.Read(frame) && !frame.Empty() {
+				frameNum++
+				// Track the new frame so the crosshair follows the object
+				t.Resume()
+				_, tp := t.ProcessFrame(*frame, frameNum)
+				if tp != nil {
+					fmt.Printf("Step frame %d -> (%d, %d) conf=%.2f\n", frameNum, tp.X, tp.Y, tp.Confidence)
+				} else {
+					fmt.Printf("Step frame %d (lost track)\n", frameNum)
+				}
+			}
+		case gui.PauseStepBack:
+			if frameNum > 0 {
+				frameNum--
+				reader.Seek(frameNum)
+				reader.Read(frame)
+				fmt.Printf("Stepped back to frame %d\n", frameNum)
+			}
 		}
 	}
-	pt, clicked := win.WaitClick(frame, "Click to realign, Space to resume", pauseOverlay)
-	if !clicked {
-		fmt.Println("Resumed from last position.")
-		t.Resume()
-		return
-	}
-	t.Realign(frame, pt.X, pt.Y)
-	fmt.Printf("Realigned to (%d, %d)\n", pt.X, pt.Y)
 }
 
 func buildOverlay(t *tracker.Tracker, tp *export.TrackPoint, cfg tracker.Config, frameNum, totalFrames int) *gui.Overlay {

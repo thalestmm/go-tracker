@@ -36,14 +36,6 @@ Novice users sometimes click on featureless areas (uniform color, flat textures)
 
 ---
 
-## Frame-by-frame stepping
-
-When paused, left/right arrow keys step one frame backward/forward. Useful for finding the exact right frame to start tracking, inspecting where drift begins, or verifying tracking accuracy frame by frame. Requires extending the video reader's seek capability and the pause UI loop.
-
-**Files:** `gui/window.go`, `video/reader.go` (Seek), `main.go`
-
----
-
 ## Undo realignment
 
 After realigning, pressing `u` or `Ctrl+Z` reverts to the previous template and position — one level of undo. Just keep the old template in memory alongside the current one. Cheap in both memory and complexity, but saves time when a mis-click during realignment would otherwise require restarting.

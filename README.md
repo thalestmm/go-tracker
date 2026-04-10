@@ -14,7 +14,7 @@ GoTracker uses OpenCV template matching (TM_CCOEFF_NORMED) with NEON SIMD accele
 4. If the tracker loses the point, it pauses so you can click to realign
 5. You get a CSV file with `time, x, y` columns
 
-The x/y coordinates are in pixels (relative to the video frame). No normalization or calibration is applied.
+The x/y coordinates are in pixels (relative to the video frame). Optional scale calibration converts to real-world units.
 
 ---
 
@@ -155,6 +155,17 @@ go-tracker -video <path.mp4> [options]
 | `-search-margin` | `40` | Search margin around last known position in pixels |
 | `-confidence` | `0.6` | Minimum confidence threshold (0.0 to 1.0) |
 | `-start-frame` | `0` | Start tracking from this frame number |
+| `-start-time` | `0` | Start tracking from this time in seconds (overrides `-start-frame`) |
+| `-axes` | `false` | Display X/Y reference axes through the tracking point |
+| `-turbo` | `false` | Skip rendering for maximum speed (1700+ FPS). Auto-pauses on lost track |
+| `-trail` | `0` | Draw trajectory trail of last N positions (0=off) |
+| `-graph` | `false` | Open a real-time graph window showing X(t) and Y(t) |
+| `-smooth` | `0` | Smoothing window for graph display (e.g., 10). Does not affect CSV output |
+| `-calibrate` | `false` | Calibrate pixel-to-real-world scale before tracking |
+| `-unit` | `m` | Unit label for calibrated output (e.g., `m`, `cm`, `mm`) |
+| `-derivatives` | `false` | Include `vx, vy, ax, ay` columns in CSV. With `-graph`, shows real-time derivative plots |
+| `-export-confidence` | `false` | Include confidence column in CSV output |
+| `-export-video` | `""` | Export annotated video with overlay to this path (e.g., `output.mp4`) |
 
 ### Examples
 
@@ -170,48 +181,78 @@ Custom output path and confidence threshold:
 ./go-tracker -video pendulum.mp4 -output pendulum_data.csv -confidence 0.5
 ```
 
-Start tracking from frame 100 with a larger template:
+Start tracking from 5 seconds in, with trail and axes:
 
 ```bash
-./go-tracker -video projectile.mp4 -start-frame 100 -template-size 25
+./go-tracker -video projectile.mp4 -start-time 5.0 -trail 50 -axes
+```
+
+Turbo mode for maximum speed:
+
+```bash
+./go-tracker -video long_experiment.mp4 -turbo
+```
+
+Full physics lab workflow with calibration, derivatives, and video export:
+
+```bash
+./go-tracker -video pendulum.mp4 -calibrate -unit cm -derivatives -export-video annotated.mp4
+```
+
+Real-time graphing with smoothing:
+
+```bash
+./go-tracker -video projectile.mp4 -graph -derivatives -smooth 10
 ```
 
 ---
 
 ## Keyboard Controls
 
-| Key | Action |
-|-----|--------|
-| **ESC** | Stop tracking and export results |
-| **Space** or **P** | Pause tracking and manually realign |
+| Key | Context | Action |
+|-----|---------|--------|
+| **ESC** | Tracking | Stop tracking and export results |
+| **Space** or **P** | Tracking | Pause tracking |
+| **Left arrow** | Paused | Step one frame backward |
+| **Right arrow** | Paused | Step one frame forward |
+| **Space** | Paused | Resume tracking from current position |
+| **Mouse click** | Paused | Realign tracking to clicked point |
+| **Enter/Space** | Point selection | Confirm selection (with zoom preview) |
+| **Mouse click** | Point selection | Reselect a different point |
 
 ---
 
 ## Workflow
 
-### 1. Select the tracking point
+### 1. Scale calibration (optional)
 
-When the video opens, you'll see the first frame. Click on the object you want to track (e.g., a ball, pendulum bob, or marker).
+If you use `-calibrate`, you'll first be asked to click two reference points with a known real-world distance. Both points are shown (cyan and magenta) with a connecting line. You then enter the distance in the terminal. This converts all output to real-world units.
 
-**Tip:** Click on a visually distinctive point with good contrast against the background. The tracker captures a small square region around your click as the template.
+### 2. Select the tracking point
 
-### 2. Tracking
+When the video opens, you'll see the first frame. Click on the object you want to track (e.g., a ball, pendulum bob, or marker). A **4x zoomed inset** appears in the top-right corner so you can verify the exact pixel selected. Press **Enter** or **Space** to confirm, or click again to reselect.
+
+**Tip:** Click on a visually distinctive point with good contrast against the background.
+
+### 3. Tracking
 
 The tracker automatically follows the point frame by frame. You'll see:
 - A **green crosshair** on the tracked point
 - A **yellow rectangle** showing the search region
 - A **confidence score** in the top-left corner
+- A **trajectory trail** if `-trail N` is enabled (fading green-to-red polyline)
+- **Reference axes** if `-axes` is enabled (full-frame lines through the tracked point)
 
-### 3. Realignment
+### 4. Pause and frame stepping
 
-If the confidence drops below the threshold (default 0.6), tracking pauses automatically and asks you to click on the object's new position. You can also press **Space** at any time to manually trigger realignment.
+Press **Space** at any time to pause. While paused:
+- Use **left/right arrow keys** to step through frames one at a time
+- **Click** to realign the tracking point to a new position
+- Press **Space** to resume tracking
 
-This is useful when:
-- The object passes behind something
-- Lighting changes dramatically
-- The object moves too fast between frames
+If the confidence drops below the threshold, tracking pauses automatically.
 
-### 4. Output
+### 5. Output
 
 When tracking finishes (video ends or you press ESC), the data is saved to CSV:
 
@@ -226,6 +267,26 @@ time,x,y
 - **time**: seconds from video start (`frame_number / fps`)
 - **x**: horizontal pixel position (0 = left edge)
 - **y**: vertical pixel position (0 = top edge)
+
+With `-calibrate -unit cm`, the CSV includes calibrated columns:
+
+```csv
+time,x,y,x_cm,y_cm
+```
+
+With `-derivatives`, velocity and acceleration columns are added:
+
+```csv
+time,x,y,vx_cm/s,vy_cm/s,ax_cm/s2,ay_cm/s2
+```
+
+### 6. Real-time graphs
+
+With `-graph`, a second window shows live plots of X(t) and Y(t), auto-scaling to the data range. Add `-derivatives` to also see Vx(t), Vy(t), Ax(t), Ay(t). Use `-smooth N` to apply a moving average to the graph display (does not affect CSV data).
+
+### 7. Video export
+
+With `-export-video output.mp4`, an annotated video is written after tracking completes, with crosshairs and trajectory trail baked in.
 
 ---
 
@@ -317,15 +378,14 @@ The search region adapts to the object's velocity: faster objects get a larger s
 
 On Apple M4 Pro, per-frame breakdown:
 
-| Step | Time |
-|------|------|
-| Read & decode frame | 1-3 ms |
-| Color to grayscale | 0.1-0.2 ms |
-| Template matching | 0.1-0.3 ms |
-| Display with overlay | ~1 ms |
-| **Total** | **~2-5 ms/frame** |
+| Mode | Decode | Track | Display | Total | FPS |
+|------|--------|-------|---------|-------|-----|
+| Normal | ~0.2 ms | ~0.5 ms | ~20 ms | ~20.7 ms | ~48 |
+| Turbo | ~0.2 ms | ~0.3 ms | 0 ms | ~0.6 ms | **2000+** |
 
-The bottleneck is video decoding, not template matching. On macOS, hardware decoding via VideoToolbox is used automatically.
+In normal mode, the bottleneck is the macOS GUI event loop (~10ms per `WaitKey`). Turbo mode (`-turbo`) skips all rendering and only pauses when the tracker loses confidence, achieving 1700+ FPS.
+
+Performance metrics are printed after every run, broken down by decode, track, and display time.
 
 ---
 
