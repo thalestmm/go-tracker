@@ -1,11 +1,14 @@
 package main
 
 import (
+	"bufio"
 	"flag"
 	"fmt"
 	"image"
 	"log"
 	"os"
+	"strconv"
+	"strings"
 	"time"
 
 	"gocv.io/x/gocv"
@@ -25,12 +28,28 @@ func main() {
 	startFrame := flag.Int("start-frame", 0, "Start tracking from this frame")
 	showAxes := flag.Bool("axes", false, "Display X/Y axes through the tracking point")
 	turbo := flag.Bool("turbo", false, "Skip rendering during tracking for maximum speed (display only on pause)")
+	exportConf := flag.Bool("export-confidence", false, "Include confidence column in CSV output")
+	calibrate := flag.Bool("calibrate", false, "Calibrate pixel-to-real-world scale before tracking")
+	scaleUnit := flag.String("unit", "m", "Unit label for calibrated output (e.g. m, cm, mm)")
 	flag.Parse()
 
+	// --- 1.1: Input validation ---
 	if *videoPath == "" {
 		fmt.Fprintf(os.Stderr, "Usage: go-tracker -video <path.mp4> [options]\n")
 		flag.PrintDefaults()
 		os.Exit(1)
+	}
+	if *confidence < 0.0 || *confidence > 1.0 {
+		log.Fatalf("Confidence must be between 0.0 and 1.0, got %.2f", *confidence)
+	}
+	if *templateSize <= 0 {
+		log.Fatalf("Template size must be positive, got %d", *templateSize)
+	}
+	if *searchMargin <= 0 {
+		log.Fatalf("Search margin must be positive, got %d", *searchMargin)
+	}
+	if *startFrame < 0 {
+		log.Fatalf("Start frame must be non-negative, got %d", *startFrame)
 	}
 
 	reader, err := video.Open(*videoPath)
@@ -42,6 +61,21 @@ func main() {
 	info := reader.Info()
 	fmt.Printf("Video: %dx%d @ %.1f FPS, %d frames\n",
 		info.Width, info.Height, info.FPS, info.FrameCount)
+
+	// --- 1.4: Validate start frame ---
+	if info.FrameCount > 0 && *startFrame >= info.FrameCount {
+		log.Fatalf("Start frame %d exceeds video length (%d frames)", *startFrame, info.FrameCount)
+	}
+
+	// --- 1.4: Validate template fits in video ---
+	minDim := info.Width
+	if info.Height < minDim {
+		minDim = info.Height
+	}
+	roiSize := 2*(*templateSize+*searchMargin) + 1
+	if roiSize > minDim {
+		log.Fatalf("Template + margin (%d px) exceeds smallest video dimension (%d px). Reduce -template-size or -search-margin.", roiSize, minDim)
+	}
 
 	if *startFrame > 0 {
 		reader.Seek(*startFrame)
@@ -57,8 +91,31 @@ func main() {
 		log.Fatalf("Failed to read first frame")
 	}
 
+	// --- 2.1: Scale calibration ---
+	var pixelsPerUnit float64
+	if *calibrate {
+		fmt.Println("Calibration: click two reference points with a known distance.")
+		p1, p2 := win.WaitTwoClicks(frame,
+			"Click first calibration point",
+			"Click second calibration point")
+		fmt.Printf("Calibration points: (%d,%d) -> (%d,%d)\n", p1.X, p1.Y, p2.X, p2.Y)
+
+		dist := readFloat("Enter the real-world distance between these points (in " + *scaleUnit + "): ")
+		if dist <= 0 {
+			log.Fatalf("Distance must be positive")
+		}
+		pixelsPerUnit = export.ComputeScale([2]int{p1.X, p1.Y}, [2]int{p2.X, p2.Y}, dist)
+		fmt.Printf("Scale: %.2f pixels/%s\n", pixelsPerUnit, *scaleUnit)
+	}
+
+	// --- Point selection ---
 	fmt.Println("Click on the point to track, then tracking begins.")
 	clickPt, _ := win.WaitClick(frame, "Click the point to track", nil)
+
+	// --- 1.4: Validate click is within frame ---
+	if clickPt.X < 0 || clickPt.X >= info.Width || clickPt.Y < 0 || clickPt.Y >= info.Height {
+		log.Fatalf("Selected point (%d, %d) is outside frame bounds", clickPt.X, clickPt.Y)
+	}
 	fmt.Printf("Selected point: (%d, %d)\n", clickPt.X, clickPt.Y)
 
 	cfg := tracker.Config{
@@ -155,7 +212,13 @@ func main() {
 		return
 	}
 
-	if err := export.WriteCSV(*outputPath, points); err != nil {
+	// --- 1.2 + 2.1: CSV export with options ---
+	csvOpts := export.CSVOptions{
+		IncludeConfidence: *exportConf,
+		Scale:             pixelsPerUnit,
+		ScaleUnit:         *scaleUnit,
+	}
+	if err := export.WriteCSV(*outputPath, points, csvOpts); err != nil {
 		log.Fatalf("Failed to write CSV: %v", err)
 	}
 	fmt.Printf("Exported %d points to %s\n", len(points), *outputPath)
@@ -199,4 +262,16 @@ func buildOverlay(t *tracker.Tracker, tp *export.TrackPoint, cfg tracker.Config,
 	}
 
 	return overlay
+}
+
+func readFloat(prompt string) float64 {
+	fmt.Print(prompt)
+	scanner := bufio.NewScanner(os.Stdin)
+	scanner.Scan()
+	text := strings.TrimSpace(scanner.Text())
+	val, err := strconv.ParseFloat(text, 64)
+	if err != nil {
+		log.Fatalf("Invalid number: %q", text)
+	}
+	return val
 }

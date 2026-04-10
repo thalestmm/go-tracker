@@ -1,4 +1,6 @@
-# GoTracker
+# go-tracker
+
+![go-tracker banner](./assets/banner.jpg)
 
 A lightweight, high-performance video point-mass tracker for physics experiments. Inspired by [Tracker](https://physlets.org/tracker/) (Open Source Physics), but focused on a single task: tracking a point of mass in a video and exporting its position over time.
 

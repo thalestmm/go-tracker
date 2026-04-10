@@ -138,6 +138,35 @@ func (w *Window) CheckClick() (image.Point, bool) {
 	}
 }
 
+// WaitTwoClicks displays a frame and collects two clicks for calibration.
+// Both points are shown with a connecting line so the user can see the measured distance.
+func (w *Window) WaitTwoClicks(frame gocv.Mat, prompt1, prompt2 string) (image.Point, image.Point) {
+	cyan := color.RGBA{255, 255, 0, 0}
+	magenta := color.RGBA{255, 0, 255, 0}
+
+	// First click
+	p1, _ := w.WaitClick(frame, prompt1, nil)
+
+	// Show frame with first point marked, wait for second
+	display := frame.Clone()
+	defer display.Close()
+	gocv.Circle(&display, p1, 5, cyan, 2)
+	p2, _ := w.WaitClick(display, prompt2, nil)
+
+	// Show both points and the line between them
+	confirm := frame.Clone()
+	defer confirm.Close()
+	gocv.Circle(&confirm, p1, 5, cyan, 2)
+	gocv.Circle(&confirm, p2, 5, magenta, 2)
+	gocv.Line(&confirm, p1, p2, color.RGBA{255, 255, 255, 0}, 1)
+	gocv.PutText(&confirm, "Calibration set. Enter distance in terminal.", image.Pt(10, 30),
+		gocv.FontHersheyPlain, 1.0, color.RGBA{0, 255, 0, 0}, 1)
+	w.win.IMShow(confirm)
+	w.win.WaitKey(1)
+
+	return p1, p2
+}
+
 // ShowTurboLabel shows the frame with a "TURBO MODE" label in the top-left.
 func (w *Window) ShowTurboLabel(frame gocv.Mat) {
 	display := frame.Clone()

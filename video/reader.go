@@ -32,10 +32,17 @@ func Open(path string) (*Reader, error) {
 		fps = 30.0
 	}
 
+	w := int(cap.Get(gocv.VideoCaptureFrameWidth))
+	h := int(cap.Get(gocv.VideoCaptureFrameHeight))
+	if w <= 0 || h <= 0 {
+		cap.Close()
+		return nil, fmt.Errorf("video: invalid dimensions %dx%d in %s", w, h, path)
+	}
+
 	info := VideoInfo{
 		Path:       path,
-		Width:      int(cap.Get(gocv.VideoCaptureFrameWidth)),
-		Height:     int(cap.Get(gocv.VideoCaptureFrameHeight)),
+		Width:      w,
+		Height:     h,
 		FPS:        fps,
 		FrameCount: int(cap.Get(gocv.VideoCaptureFrameCount)),
 	}
