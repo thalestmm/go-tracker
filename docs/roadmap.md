@@ -20,14 +20,6 @@ Many physics experiments involve two or more objects: collisions, coupled pendul
 
 ---
 
-## Annotated video export (`-export-video output.mp4`)
-
-Students frequently include tracked footage in lab reports and presentations. After tracking completes, write a new video with the tracking overlay baked in — crosshair on the tracked point, optional trajectory trail (last N positions as a fading polyline). Uses `gocv.VideoWriter` with the same codec as the input or H.264 by default. This runs post-tracking as a separate pass, so it has zero impact on tracking performance.
-
-**Files:** new `export/video.go`, `main.go`
-
----
-
 ## Progress output in turbo mode
 
 In turbo mode there's no GUI feedback. Print a single-line progress indicator to the terminal every ~500ms using carriage return (`\r`) to avoid scroll spam: `Frame 2500/5329 (47%) — 1710 FPS`. Gives the user confidence that tracking is progressing without any performance cost.

@@ -33,6 +33,7 @@ func main() {
 	scaleUnit := flag.String("unit", "m", "Unit label for calibrated output (e.g. m, cm, mm)")
 	showGraph := flag.Bool("graph", false, "Show real-time X(t) and Y(t) graph window")
 	trailLen := flag.Int("trail", 0, "Draw trajectory trail of last N positions (0=off)")
+	exportVideo := flag.String("export-video", "", "Export annotated video to this path (e.g. output.mp4)")
 	flag.Parse()
 
 	// --- 1.1: Input validation ---
@@ -253,6 +254,16 @@ func main() {
 		log.Fatalf("Failed to write CSV: %v", err)
 	}
 	fmt.Printf("Exported %d points to %s\n", len(points), *outputPath)
+
+	// --- Annotated video export ---
+	if *exportVideo != "" {
+		fmt.Printf("Exporting annotated video to %s...\n", *exportVideo)
+		vidOpts := export.VideoOptions{TrailLen: *trailLen}
+		if err := export.WriteVideo(*videoPath, *exportVideo, points, info.FPS, *startFrame, vidOpts); err != nil {
+			log.Fatalf("Failed to export video: %v", err)
+		}
+		fmt.Printf("Video exported to %s\n", *exportVideo)
+	}
 }
 
 func realign(win *gui.Window, t *tracker.Tracker, frame gocv.Mat, showAxes bool) {
