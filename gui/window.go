@@ -14,6 +14,7 @@ type Overlay struct {
 	Confidence float64
 	Status     string
 	ShowAxes   bool
+	Trail      []image.Point // recent positions for trajectory trail
 }
 
 type Window struct {
@@ -78,6 +79,22 @@ func (w *Window) drawOverlay(display *gocv.Mat, overlay *Overlay) {
 	green := color.RGBA{0, 255, 0, 0}
 	yellow := color.RGBA{255, 255, 0, 0}
 	red := color.RGBA{0, 0, 255, 0}
+
+	// Trajectory trail
+	if len(overlay.Trail) > 1 {
+		n := len(overlay.Trail)
+		for i := 1; i < n; i++ {
+			// Fade from dim to bright: older points are dimmer
+			alpha := float64(i) / float64(n)
+			c := color.RGBA{
+				R: uint8(alpha * 255),
+				G: uint8((1 - alpha) * 200),
+				B: 0,
+				A: 0,
+			}
+			gocv.Line(display, overlay.Trail[i-1], overlay.Trail[i], c, 1)
+		}
+	}
 
 	// Crosshair at track position
 	p := overlay.TrackPos

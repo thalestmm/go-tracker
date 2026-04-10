@@ -32,6 +32,7 @@ func main() {
 	calibrate := flag.Bool("calibrate", false, "Calibrate pixel-to-real-world scale before tracking")
 	scaleUnit := flag.String("unit", "m", "Unit label for calibrated output (e.g. m, cm, mm)")
 	showGraph := flag.Bool("graph", false, "Show real-time X(t) and Y(t) graph window")
+	trailLen := flag.Int("trail", 0, "Draw trajectory trail of last N positions (0=off)")
 	flag.Parse()
 
 	// --- 1.1: Input validation ---
@@ -137,6 +138,9 @@ func main() {
 	var totalDecode, totalTrack, totalDisplay time.Duration
 	var framesProcessed int
 
+	// Trail buffer for trajectory overlay
+	var trailBuf []image.Point
+
 	// Graph window for real-time plotting
 	var graphWin *gui.GraphWindow
 	var graphTimes []float64
@@ -179,6 +183,14 @@ func main() {
 
 		framesProcessed++
 
+		// Update trail buffer
+		if *trailLen > 0 && tp != nil {
+			trailBuf = append(trailBuf, image.Pt(tp.X, tp.Y))
+			if len(trailBuf) > *trailLen {
+				trailBuf = trailBuf[len(trailBuf)-*trailLen:]
+			}
+		}
+
 		// Update graph with new data point
 		if graphWin != nil && tp != nil {
 			graphTimes = append(graphTimes, tp.Time)
@@ -191,6 +203,7 @@ func main() {
 			displayStart := time.Now()
 			overlay := buildOverlay(t, tp, cfg, frameNum, info.FrameCount)
 			overlay.ShowAxes = *showAxes
+			overlay.Trail = trailBuf
 			key := win.ShowFrame(frame, overlay, 1)
 			totalDisplay += time.Since(displayStart)
 

@@ -28,14 +28,6 @@ Students frequently include tracked footage in lab reports and presentations. Af
 
 ---
 
-## Trajectory trail overlay (`-trail N`)
-
-During normal (non-turbo) tracking, draw the last N tracked positions as a connected polyline that fades from green to red based on confidence. Gives immediate visual feedback on tracking quality and looks good in reports. Default is off (0); enable with e.g. `-trail 50` to show the last 50 positions.
-
-**Files:** `gui/window.go` (extend `drawOverlay`), `main.go`
-
----
-
 ## Progress output in turbo mode
 
 In turbo mode there's no GUI feedback. Print a single-line progress indicator to the terminal every ~500ms using carriage return (`\r`) to avoid scroll spam: `Frame 2500/5329 (47%) — 1710 FPS`. Gives the user confidence that tracking is progressing without any performance cost.
