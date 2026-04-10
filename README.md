@@ -90,7 +90,7 @@ docker run -it --rm `
 
 #### Prerequisites
 
-- **Go** 1.21 or later: https://go.dev/dl/
+- **Go** 1.25 or later: https://go.dev/dl/
 - **OpenCV 4.x** with development headers
 - **pkg-config**
 
