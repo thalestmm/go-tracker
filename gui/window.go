@@ -145,6 +145,99 @@ func (w *Window) ShowFrame(frame gocv.Mat, overlay *Overlay, waitMs int) int {
 	return w.win.WaitKey(waitMs)
 }
 
+// WaitClickZoom works like WaitClick but after the click, shows a 4x zoomed inset
+// of the selected region so the user can confirm. Press Enter/Space to accept, or click again to reselect.
+func (w *Window) WaitClickZoom(frame gocv.Mat, prompt string, zoomRadius int) (image.Point, bool) {
+	for {
+		pt, clicked := w.WaitClick(frame, prompt, nil)
+		if !clicked {
+			return pt, false
+		}
+
+		// Show frame with zoom inset for confirmation
+		display := frame.Clone()
+
+		// Draw crosshair at selected point
+		green := color.RGBA{0, 255, 0, 0}
+		gocv.Line(&display, image.Pt(pt.X-10, pt.Y), image.Pt(pt.X+10, pt.Y), green, 2)
+		gocv.Line(&display, image.Pt(pt.X, pt.Y-10), image.Pt(pt.X, pt.Y+10), green, 2)
+
+		// Extract and zoom the region around the click
+		fw, fh := frame.Cols(), frame.Rows()
+		r := zoomRadius
+		x0 := pt.X - r
+		y0 := pt.Y - r
+		x1 := pt.X + r
+		y1 := pt.Y + r
+		if x0 < 0 {
+			x0 = 0
+		}
+		if y0 < 0 {
+			y0 = 0
+		}
+		if x1 > fw {
+			x1 = fw
+		}
+		if y1 > fh {
+			y1 = fh
+		}
+
+		roi := frame.Region(image.Rect(x0, y0, x1, y1))
+		zoomSize := 4 * 2 * r // 4x magnification
+		zoomed := gocv.NewMat()
+		gocv.Resize(roi, &zoomed, image.Pt(zoomSize, zoomSize), 0, 0, gocv.InterpolationNearestNeighbor)
+		roi.Close()
+
+		// Draw zoom inset in top-right corner with border
+		insetX := fw - zoomSize - 10
+		insetY := 10
+		if insetX < 0 {
+			insetX = 0
+		}
+		insetRect := image.Rect(insetX, insetY, insetX+zoomSize, insetY+zoomSize)
+		gocv.Rectangle(&display, insetRect, color.RGBA{255, 255, 255, 0}, 2)
+
+		insetROI := display.Region(insetRect)
+		zoomed.CopyTo(&insetROI)
+		insetROI.Close()
+		zoomed.Close()
+
+		// Draw crosshair in center of zoom inset
+		cx := insetX + zoomSize/2
+		cy := insetY + zoomSize/2
+		gocv.Line(&display, image.Pt(cx-8, cy), image.Pt(cx+8, cy), green, 1)
+		gocv.Line(&display, image.Pt(cx, cy-8), image.Pt(cx, cy+8), green, 1)
+
+		gocv.PutText(&display, "Enter=confirm, Click=reselect", image.Pt(10, 30),
+			gocv.FontHersheyPlain, 1.0, green, 1)
+
+		w.win.IMShow(display)
+		display.Close()
+
+		// Wait for confirmation (Enter/Space) or a new click to reselect
+		select {
+		case <-w.clickCh:
+		default:
+		}
+		confirmed := false
+		reselect := false
+		for !confirmed && !reselect {
+			key := w.win.WaitKey(30)
+			if key == 13 || key == 10 || key == 32 { // Enter or Space
+				confirmed = true
+			}
+			select {
+			case <-w.clickCh:
+				reselect = true
+			default:
+			}
+		}
+		if confirmed {
+			return pt, true
+		}
+	}
+}
+
 // CheckClick returns a click if one happened, without blocking.
 func (w *Window) CheckClick() (image.Point, bool) {
 	select {

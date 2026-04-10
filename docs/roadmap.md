@@ -52,14 +52,6 @@ When paused, left/right arrow keys step one frame backward/forward. Useful for f
 
 ---
 
-## Zoom on selection
-
-When the user clicks to select a tracking point, show a zoomed-in inset (e.g., 4x magnification) of the template region in a corner of the window. Helps confirm the correct pixel was selected, especially for small objects or markers. Displayed only during point selection, not during tracking.
-
-**Files:** `gui/window.go`
-
----
-
 ## Undo realignment
 
 After realigning, pressing `u` or `Ctrl+Z` reverts to the previous template and position — one level of undo. Just keep the old template in memory alongside the current one. Cheap in both memory and complexity, but saves time when a mis-click during realignment would otherwise require restarting.

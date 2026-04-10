@@ -110,9 +110,9 @@ func main() {
 		fmt.Printf("Scale: %.2f pixels/%s\n", pixelsPerUnit, *scaleUnit)
 	}
 
-	// --- Point selection ---
-	fmt.Println("Click on the point to track, then tracking begins.")
-	clickPt, _ := win.WaitClick(frame, "Click the point to track", nil)
+	// --- Point selection with zoom preview ---
+	fmt.Println("Click on the point to track. A zoom inset will appear for confirmation.")
+	clickPt, _ := win.WaitClickZoom(frame, "Click the point to track", *templateSize+5)
 
 	// --- 1.4: Validate click is within frame ---
 	if clickPt.X < 0 || clickPt.X >= info.Width || clickPt.Y < 0 || clickPt.Y >= info.Height {
