@@ -374,7 +374,7 @@ The search region adapts to the object's velocity: faster objects get a larger s
 
 ---
 
-## Performance
+## Performance ⚡
 
 On Apple M4 Pro, per-frame breakdown:
 
