@@ -138,6 +138,27 @@ func (w *Window) CheckClick() (image.Point, bool) {
 	}
 }
 
+// ShowTurbo displays a black screen with turbo mode status and frame counter.
+func (w *Window) ShowTurbo(frameNum, totalFrames int) {
+	black := gocv.NewMatWithSize(240, 400, gocv.MatTypeCV8UC3)
+	defer black.Close()
+
+	white := color.RGBA{255, 255, 255, 0}
+	gray := color.RGBA{150, 150, 150, 0}
+
+	gocv.PutText(&black, "TURBO MODE", image.Pt(100, 100),
+		gocv.FontHersheySimplex, 0.8, white, 1)
+	gocv.PutText(&black, fmt.Sprintf("Frame %d / %d", frameNum, totalFrames), image.Pt(90, 150),
+		gocv.FontHersheyPlain, 1.0, gray, 1)
+
+	w.win.IMShow(black)
+}
+
+// PollKey checks for key presses without rendering. Used in turbo mode.
+func (w *Window) PollKey(waitMs int) int {
+	return w.win.WaitKey(waitMs)
+}
+
 func (w *Window) Close() {
 	w.win.Close()
 }

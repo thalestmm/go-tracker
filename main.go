@@ -24,6 +24,7 @@ func main() {
 	confidence := flag.Float64("confidence", 0.6, "Min confidence threshold (0-1)")
 	startFrame := flag.Int("start-frame", 0, "Start tracking from this frame")
 	showAxes := flag.Bool("axes", false, "Display X/Y axes through the tracking point")
+	turbo := flag.Bool("turbo", false, "Skip rendering during tracking for maximum speed (display only on pause)")
 	flag.Parse()
 
 	if *videoPath == "" {
@@ -78,7 +79,12 @@ func main() {
 	var totalDecode, totalTrack, totalDisplay time.Duration
 	var framesProcessed int
 
-	fmt.Println("Tracking... ESC=stop, Space=realign")
+	if *turbo {
+		fmt.Println("Tracking (turbo)... auto-pauses on lost track")
+	} else {
+		fmt.Println("Tracking... ESC=stop, Space=pause")
+	}
+
 	for !stopped {
 		frameNum++
 
@@ -95,7 +101,6 @@ func main() {
 		if state == tracker.StatePausedForRealignment {
 			fmt.Printf("Lost track at frame %d. Click to realign.\n", frameNum)
 			realign(win, t, frame, *showAxes)
-			// Re-process this frame with new template
 			state, tp = t.ProcessFrame(frame, frameNum)
 		}
 
@@ -105,20 +110,21 @@ func main() {
 
 		framesProcessed++
 
-		// Build overlay for display
-		displayStart := time.Now()
-		overlay := buildOverlay(t, tp, cfg, frameNum, info.FrameCount)
-		overlay.ShowAxes = *showAxes
-		key := win.ShowFrame(frame, overlay, 1)
-		totalDisplay += time.Since(displayStart)
+		if !*turbo {
+			displayStart := time.Now()
+			overlay := buildOverlay(t, tp, cfg, frameNum, info.FrameCount)
+			overlay.ShowAxes = *showAxes
+			key := win.ShowFrame(frame, overlay, 1)
+			totalDisplay += time.Since(displayStart)
 
-		switch {
-		case key == 27: // ESC
-			fmt.Println("Stopped by user.")
-			stopped = true
-		case key == 32 || key == 'p' || key == 'P': // Space or P
-			fmt.Println("Manual realignment requested.")
-			realign(win, t, frame, *showAxes)
+			switch {
+			case key == 27: // ESC
+				fmt.Println("Stopped by user.")
+				stopped = true
+			case key == 32 || key == 'p' || key == 'P': // Space or P
+				fmt.Println("Manual realignment requested.")
+				realign(win, t, frame, *showAxes)
+			}
 		}
 	}
 
