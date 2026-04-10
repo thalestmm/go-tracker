@@ -1,3 +1,4 @@
 *.csv
 *.mp4
 .DS_Store
+/go-tracker
