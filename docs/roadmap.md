@@ -44,12 +44,6 @@ After realigning, pressing `u` or `Ctrl+Z` reverts to the previous template and 
 
 ---
 
-## Config file support
-
-Read default flag values from `~/.go-tracker.toml` or a project-local `.go-tracker.toml`. Avoids long CLI flag strings for repeated use (common in lab settings where the same experiment is filmed multiple times). CLI flags always override config file values.
-
----
-
 ## Batch processing
 
 Accept a directory of videos via `-batch <dir>`, process each sequentially with the same tracking parameters. Output one CSV per video with matching filenames. Useful for repetitive lab work where the same experiment is recorded across multiple trials.

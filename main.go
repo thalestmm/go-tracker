@@ -13,6 +13,7 @@ import (
 
 	"gocv.io/x/gocv"
 
+	"github.com/thalesmeier/go-tracker/config"
 	"github.com/thalesmeier/go-tracker/export"
 	"github.com/thalesmeier/go-tracker/gui"
 	"github.com/thalesmeier/go-tracker/tracker"
@@ -20,17 +21,20 @@ import (
 )
 
 func main() {
+	// Config file flag is parsed first
+	configPath := flag.String("config", "", "Path to config file (default: ./go-tracker.toml)")
+
 	videoPath := flag.String("video", "", "Path to MP4 video file (required)")
-	outputPath := flag.String("output", "tracking.csv", "Output CSV file path")
-	templateSize := flag.Int("template-size", 15, "Template half-size in pixels")
-	searchMargin := flag.Int("search-margin", 40, "Search margin in pixels")
-	confidence := flag.Float64("confidence", 0.6, "Min confidence threshold (0-1)")
+	outputPath := flag.String("output", "", "Output CSV file path")
+	templateSize := flag.Int("template-size", 0, "Template half-size in pixels")
+	searchMargin := flag.Int("search-margin", 0, "Search margin in pixels")
+	confidence := flag.Float64("confidence", 0, "Min confidence threshold (0-1)")
 	startFrame := flag.Int("start-frame", 0, "Start tracking from this frame")
 	showAxes := flag.Bool("axes", false, "Display X/Y axes through the tracking point")
 	turbo := flag.Bool("turbo", false, "Skip rendering during tracking for maximum speed (display only on pause)")
 	exportConf := flag.Bool("export-confidence", false, "Include confidence column in CSV output")
 	calibrate := flag.Bool("calibrate", false, "Calibrate pixel-to-real-world scale before tracking")
-	scaleUnit := flag.String("unit", "m", "Unit label for calibrated output (e.g. m, cm, mm)")
+	scaleUnit := flag.String("unit", "", "Unit label for calibrated output (e.g. m, cm, mm)")
 	showGraph := flag.Bool("graph", false, "Show real-time X(t) and Y(t) graph window")
 	trailLen := flag.Int("trail", 0, "Draw trajectory trail of last N positions (0=off)")
 	exportVideo := flag.String("export-video", "", "Export annotated video to this path (e.g. output.mp4)")
@@ -38,6 +42,67 @@ func main() {
 	startTime := flag.Float64("start-time", 0, "Start tracking from this time in seconds (overrides -start-frame)")
 	smooth := flag.Int("smooth", 0, "Smoothing window for graph display (0=off, e.g. 5 or 10). Does not affect CSV output.")
 	flag.Parse()
+
+	// Load config file: explicit path > ./go-tracker.toml > defaults
+	cfgFile := *configPath
+	if cfgFile == "" {
+		cfgFile = "go-tracker.toml"
+	}
+	cfg, err := config.Load(cfgFile)
+	if err != nil && *configPath != "" {
+		// Only fatal if user explicitly passed a config path
+		log.Fatalf("Failed to load config: %v", err)
+	}
+
+	// CLI flags override config values (only when explicitly set)
+	if *outputPath == "" {
+		*outputPath = cfg.Output
+	}
+	if *templateSize == 0 {
+		*templateSize = cfg.TemplateSize
+	}
+	if *searchMargin == 0 {
+		*searchMargin = cfg.SearchMargin
+	}
+	if *confidence == 0 {
+		*confidence = cfg.Confidence
+	}
+	if *scaleUnit == "" {
+		*scaleUnit = cfg.Unit
+	}
+	if !*showAxes && cfg.Axes {
+		*showAxes = true
+	}
+	if !*turbo && cfg.Turbo {
+		*turbo = true
+	}
+	if !*exportConf && cfg.ExportConfidence {
+		*exportConf = true
+	}
+	if !*calibrate && cfg.Calibrate {
+		*calibrate = true
+	}
+	if !*showGraph && cfg.Graph {
+		*showGraph = true
+	}
+	if *trailLen == 0 && cfg.Trail > 0 {
+		*trailLen = cfg.Trail
+	}
+	if *exportVideo == "" && cfg.ExportVideo != "" {
+		*exportVideo = cfg.ExportVideo
+	}
+	if !*derivatives && cfg.Derivatives {
+		*derivatives = true
+	}
+	if *smooth == 0 && cfg.Smooth > 0 {
+		*smooth = cfg.Smooth
+	}
+	if *startFrame == 0 && cfg.StartFrame > 0 {
+		*startFrame = cfg.StartFrame
+	}
+	if *startTime == 0 && cfg.StartTime > 0 {
+		*startTime = cfg.StartTime
+	}
 
 	// --- 1.1: Input validation ---
 	if *videoPath == "" {
@@ -130,7 +195,7 @@ func main() {
 	}
 	fmt.Printf("Selected point: (%d, %d)\n", clickPt.X, clickPt.Y)
 
-	cfg := tracker.Config{
+	tcfg := tracker.Config{
 		TemplateSize:        *templateSize,
 		SearchMargin:        *searchMargin,
 		ConfidenceThreshold: *confidence,
@@ -138,7 +203,7 @@ func main() {
 		MaxSearchMargin:     120,
 	}
 
-	t := tracker.New(cfg, info.FPS)
+	t := tracker.New(tcfg, info.FPS)
 	defer t.Close()
 	t.Initialize(frame, clickPt.X, clickPt.Y)
 
@@ -211,7 +276,7 @@ func main() {
 
 		if !*turbo {
 			displayStart := time.Now()
-			overlay := buildOverlay(t, tp, cfg, frameNum, info.FrameCount)
+			overlay := buildOverlay(t, tp, tcfg, frameNum, info.FrameCount)
 			overlay.ShowAxes = *showAxes
 			overlay.Trail = trailBuf
 			key := win.ShowFrame(frame, overlay, 1)

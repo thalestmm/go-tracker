@@ -1,0 +1,32 @@
+# GoTracker configuration
+# CLI flags override these values.
+# Place this file in your project directory as go-tracker.toml
+# or pass a custom path with -config <path>
+
+# --- Output ---
+output = "tracking.csv"
+# export_video = ""          # e.g. "annotated.mp4"
+# export_confidence = false
+
+# --- Tracking ---
+template_size = 15            # half-size in pixels (template is 2n+1 square)
+search_margin = 40            # search region margin in pixels
+confidence = 0.6              # min confidence threshold (0.0 - 1.0)
+
+# --- Start position ---
+# start_frame = 0
+# start_time = 0.0           # in seconds (overrides start_frame)
+
+# --- Display ---
+# axes = false               # show X/Y reference axes
+# turbo = false              # skip rendering for max speed
+# trail = 0                  # trajectory trail length (0 = off)
+# graph = false              # real-time X(t)/Y(t) graph window
+# smooth = 0                 # graph smoothing window (0 = off)
+
+# --- Calibration ---
+# calibrate = false
+# unit = "m"                 # unit label (m, cm, mm, etc.)
+
+# --- Analysis ---
+# derivatives = false        # include vx, vy, ax, ay in CSV
