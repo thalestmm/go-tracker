@@ -42,7 +42,7 @@ func New(cfg Config, fps float64) *Tracker {
 }
 
 func (t *Tracker) Initialize(frame gocv.Mat, x, y int) {
-	gocv.CvtColor(frame, &t.gray, gocv.ColorBGRToGray)
+	_ = gocv.CvtColor(frame, &t.gray, gocv.ColorBGRToGray)
 	tmpl, _ := ExtractTemplate(t.gray, x, y, t.config.TemplateSize)
 	t.template = tmpl
 	t.lastPos = image.Pt(x, y)
@@ -55,7 +55,7 @@ func (t *Tracker) ProcessFrame(frame gocv.Mat, frameNum int) (State, *export.Tra
 		return t.state, nil
 	}
 
-	gocv.CvtColor(frame, &t.gray, gocv.ColorBGRToGray)
+	_ = gocv.CvtColor(frame, &t.gray, gocv.ColorBGRToGray)
 
 	margin := t.config.SearchMargin
 	if t.config.AdaptiveSearch {
@@ -70,7 +70,7 @@ func (t *Tracker) ProcessFrame(frame gocv.Mat, frameNum int) (State, *export.Tra
 	)
 
 	relX, relY, confidence := t.matcher.Match(searchRegion, t.template)
-	searchRegion.Close()
+	_ = searchRegion.Close()
 
 	absX := searchRect.Min.X + relX + t.config.TemplateSize
 	absY := searchRect.Min.Y + relY + t.config.TemplateSize
@@ -95,9 +95,9 @@ func (t *Tracker) ProcessFrame(frame gocv.Mat, frameNum int) (State, *export.Tra
 }
 
 func (t *Tracker) Realign(frame gocv.Mat, x, y int) {
-	gocv.CvtColor(frame, &t.gray, gocv.ColorBGRToGray)
+	_ = gocv.CvtColor(frame, &t.gray, gocv.ColorBGRToGray)
 	if !t.template.Empty() {
-		t.template.Close()
+		_ = t.template.Close()
 	}
 	tmpl, _ := ExtractTemplate(t.gray, x, y, t.config.TemplateSize)
 	t.template = tmpl
@@ -128,8 +128,8 @@ func (t *Tracker) Confidence() float64 {
 
 func (t *Tracker) Close() {
 	if !t.template.Empty() {
-		t.template.Close()
+		_ = t.template.Close()
 	}
-	t.gray.Close()
+	_ = t.gray.Close()
 	t.matcher.Close()
 }

@@ -18,14 +18,14 @@ func fillRect(mat *gocv.Mat, x0, y0, x1, y1 int, val uint8) {
 func TestMatcherFindsKnownPosition(t *testing.T) {
 	// Create a 100x100 gray frame (all black)
 	frame := gocv.NewMatWithSize(100, 100, gocv.MatTypeCV8UC1)
-	defer frame.Close()
+	defer func() { _ = frame.Close() }()
 
 	// Draw a white 20x20 square at position (40,40)-(60,60)
 	fillRect(&frame, 40, 40, 60, 60, 255)
 
 	// Extract template centered at (50,50) with half-size 10 → 21x21
 	tmpl, _ := ExtractTemplate(frame, 50, 50, 10)
-	defer tmpl.Close()
+	defer func() { _ = tmpl.Close() }()
 
 	m := NewMatcher()
 	defer m.Close()
@@ -43,9 +43,9 @@ func TestMatcherFindsKnownPosition(t *testing.T) {
 
 func TestMatcherFindsMovedTarget(t *testing.T) {
 	frame1 := gocv.NewMatWithSize(100, 100, gocv.MatTypeCV8UC1)
-	defer frame1.Close()
+	defer func() { _ = frame1.Close() }()
 	frame2 := gocv.NewMatWithSize(100, 100, gocv.MatTypeCV8UC1)
-	defer frame2.Close()
+	defer func() { _ = frame2.Close() }()
 
 	// Frame 1: square at (30,30)-(50,50)
 	fillRect(&frame1, 30, 30, 50, 50, 255)
@@ -54,7 +54,7 @@ func TestMatcherFindsMovedTarget(t *testing.T) {
 
 	// Template from frame 1 centered at (40,40)
 	tmpl, _ := ExtractTemplate(frame1, 40, 40, 10)
-	defer tmpl.Close()
+	defer func() { _ = tmpl.Close() }()
 
 	m := NewMatcher()
 	defer m.Close()
@@ -72,15 +72,15 @@ func TestMatcherFindsMovedTarget(t *testing.T) {
 
 func TestMatcherLowConfidenceOnBlank(t *testing.T) {
 	frame := gocv.NewMatWithSize(100, 100, gocv.MatTypeCV8UC1)
-	defer frame.Close()
+	defer func() { _ = frame.Close() }()
 	fillRect(&frame, 40, 40, 60, 60, 255)
 
 	tmpl, _ := ExtractTemplate(frame, 50, 50, 10)
-	defer tmpl.Close()
+	defer func() { _ = tmpl.Close() }()
 
 	// Search in a uniform gray frame — no matching pattern
 	gray := gocv.NewMatWithSize(100, 100, gocv.MatTypeCV8UC1)
-	defer gray.Close()
+	defer func() { _ = gray.Close() }()
 	fillRect(&gray, 0, 0, 100, 100, 128) // uniform mid-gray
 
 	m := NewMatcher()

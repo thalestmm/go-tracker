@@ -22,12 +22,12 @@ func NewMatcher() Matcher {
 }
 
 func (m *cpuMatcher) Match(searchRegion, template gocv.Mat) (int, int, float64) {
-	gocv.MatchTemplate(searchRegion, template, &m.result, gocv.TmCcoeffNormed, m.mask)
+	_ = gocv.MatchTemplate(searchRegion, template, &m.result, gocv.TmCcoeffNormed, m.mask)
 	_, maxVal, _, maxLoc := gocv.MinMaxLoc(m.result)
 	return maxLoc.X, maxLoc.Y, float64(maxVal)
 }
 
 func (m *cpuMatcher) Close() {
-	m.result.Close()
-	m.mask.Close()
+	_ = m.result.Close()
+	_ = m.mask.Close()
 }

@@ -83,10 +83,10 @@ func TestAdaptiveMarginCapped(t *testing.T) {
 func TestExtractTemplate(t *testing.T) {
 	// Create 100x100 grayscale frame
 	frame := gocv.NewMatWithSize(100, 100, gocv.MatTypeCV8UC1)
-	defer frame.Close()
+	defer func() { _ = frame.Close() }()
 
 	tmpl, rect := ExtractTemplate(frame, 50, 50, 10)
-	defer tmpl.Close()
+	defer func() { _ = tmpl.Close() }()
 
 	// Template should be 21x21 (2*10+1)
 	if tmpl.Cols() != 21 || tmpl.Rows() != 21 {
@@ -99,11 +99,11 @@ func TestExtractTemplate(t *testing.T) {
 
 func TestExtractTemplateNearEdge(t *testing.T) {
 	frame := gocv.NewMatWithSize(100, 100, gocv.MatTypeCV8UC1)
-	defer frame.Close()
+	defer func() { _ = frame.Close() }()
 
 	// Near top-left corner: should be clamped
 	tmpl, rect := ExtractTemplate(frame, 3, 3, 10)
-	defer tmpl.Close()
+	defer func() { _ = tmpl.Close() }()
 
 	if rect.Min.X != 0 || rect.Min.Y != 0 {
 		t.Errorf("rect min: got (%d,%d), want (0,0)", rect.Min.X, rect.Min.Y)
@@ -116,10 +116,10 @@ func TestExtractTemplateNearEdge(t *testing.T) {
 
 func TestExtractSearchRegion(t *testing.T) {
 	frame := gocv.NewMatWithSize(200, 200, gocv.MatTypeCV8UC1)
-	defer frame.Close()
+	defer func() { _ = frame.Close() }()
 
 	region, rect := ExtractSearchRegion(frame, 100, 100, 10, 30)
-	defer region.Close()
+	defer func() { _ = region.Close() }()
 
 	// Region should be centered on (100,100) with margin 10+30=40 in each direction
 	expectedSize := 2*40 + 1 // 81

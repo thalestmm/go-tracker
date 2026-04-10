@@ -29,7 +29,7 @@ func TestInitialize(t *testing.T) {
 	defer tr.Close()
 
 	frame := makeFrame(200, 200, 100, 100, 20)
-	defer frame.Close()
+	defer func() { _ = frame.Close() }()
 
 	tr.Initialize(frame, 100, 100)
 
@@ -48,12 +48,12 @@ func TestProcessFrameTracksMovingObject(t *testing.T) {
 
 	// Initialize with square at (100, 100)
 	frame1 := makeFrame(200, 200, 100, 100, 20)
-	defer frame1.Close()
+	defer func() { _ = frame1.Close() }()
 	tr.Initialize(frame1, 100, 100)
 
 	// Move square to (105, 100) — small displacement
 	frame2 := makeFrame(200, 200, 105, 100, 20)
-	defer frame2.Close()
+	defer func() { _ = frame2.Close() }()
 
 	state, tp := tr.ProcessFrame(frame2, 1)
 
@@ -77,12 +77,12 @@ func TestProcessFrameLostTrack(t *testing.T) {
 
 	// Initialize with a distinctive pattern
 	frame1 := makeFrame(200, 200, 100, 100, 20)
-	defer frame1.Close()
+	defer func() { _ = frame1.Close() }()
 	tr.Initialize(frame1, 100, 100)
 
 	// Completely blank frame — should lose track
 	blank := gocv.NewMatWithSize(200, 200, gocv.MatTypeCV8UC3)
-	defer blank.Close()
+	defer func() { _ = blank.Close() }()
 
 	state, tp := tr.ProcessFrame(blank, 1)
 
@@ -100,12 +100,12 @@ func TestResume(t *testing.T) {
 	defer tr.Close()
 
 	frame := makeFrame(200, 200, 100, 100, 20)
-	defer frame.Close()
+	defer func() { _ = frame.Close() }()
 	tr.Initialize(frame, 100, 100)
 
 	// Force paused state
 	blank := gocv.NewMatWithSize(200, 200, gocv.MatTypeCV8UC3)
-	defer blank.Close()
+	defer func() { _ = blank.Close() }()
 	tr.ProcessFrame(blank, 1)
 
 	tr.Resume()
@@ -120,12 +120,12 @@ func TestRealign(t *testing.T) {
 	defer tr.Close()
 
 	frame := makeFrame(200, 200, 100, 100, 20)
-	defer frame.Close()
+	defer func() { _ = frame.Close() }()
 	tr.Initialize(frame, 100, 100)
 
 	// Realign to new position
 	frame2 := makeFrame(200, 200, 150, 150, 20)
-	defer frame2.Close()
+	defer func() { _ = frame2.Close() }()
 	tr.Realign(frame2, 150, 150)
 
 	if tr.State() != StateTracking {
@@ -142,7 +142,7 @@ func TestPointsAccumulate(t *testing.T) {
 	defer tr.Close()
 
 	frame := makeFrame(200, 200, 100, 100, 20)
-	defer frame.Close()
+	defer func() { _ = frame.Close() }()
 	tr.Initialize(frame, 100, 100)
 
 	// Process same frame a few times

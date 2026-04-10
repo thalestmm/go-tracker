@@ -26,7 +26,7 @@ func WriteCSV(path string, points []TrackPoint, opts CSVOptions) error {
 	if err != nil {
 		return fmt.Errorf("export: failed to create %s: %w", path, err)
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	w := csv.NewWriter(f)
 	defer w.Flush()

@@ -155,14 +155,14 @@ func main() {
 	}
 
 	if *startFrame > 0 {
-		reader.Seek(*startFrame)
+		_ = reader.Seek(*startFrame)
 	}
 
 	win := gui.New("GoTracker")
 	defer win.Close()
 
 	frame := gocv.NewMat()
-	defer frame.Close()
+	defer func() { _ = frame.Close() }()
 
 	if !reader.Read(&frame) || frame.Empty() {
 		log.Fatalf("Failed to read first frame")
@@ -282,11 +282,11 @@ func main() {
 			key := win.ShowFrame(frame, overlay, 1)
 			totalDisplay += time.Since(displayStart)
 
-			switch {
-			case key == 27: // ESC
+			switch key {
+			case 27: // ESC
 				fmt.Println("Stopped by user.")
 				stopped = true
-			case key == 32 || key == 'p' || key == 'P': // Space or P
+			case 32, 'p', 'P': // Space or P
 				fmt.Println("Paused.")
 				frameNum = pauseLoop(win, t, reader, &frame, frameNum, *showAxes)
 			}
@@ -377,8 +377,8 @@ func pauseLoop(win *gui.Window, t *tracker.Tracker, reader *video.Reader, frame 
 		case gui.PauseStepBack:
 			if frameNum > 0 {
 				frameNum--
-				reader.Seek(frameNum)
-				reader.Read(frame)
+				_ = reader.Seek(frameNum)
+				_ = reader.Read(frame)
 				fmt.Printf("Stepped back to frame %d\n", frameNum)
 			}
 		}

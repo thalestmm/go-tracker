@@ -29,7 +29,7 @@ func ExtractTemplate(frame gocv.Mat, cx, cy, halfSize int) (gocv.Mat, image.Rect
 	rect = clampRect(rect, frame.Cols(), frame.Rows())
 	region := frame.Region(rect)
 	tmpl := region.Clone()
-	region.Close()
+	_ = region.Close()
 	return tmpl, rect
 }
 

@@ -40,7 +40,7 @@ func (g *GraphWindow) Update(times []float64, xs, ys []int) {
 	}
 
 	canvasH := numPlots*plotHeightUnit + (numPlots+1)*graphMargin
-	g.canvas.Close()
+	_ = g.canvas.Close()
 	g.canvas = gocv.NewMatWithSize(canvasH, graphWidth, gocv.MatTypeCV8UC3)
 	fillMat(&g.canvas, color.RGBA{30, 30, 30, 0})
 
@@ -91,10 +91,10 @@ func (g *GraphWindow) Update(times []float64, xs, ys []int) {
 		plotTop := graphMargin + pi*(plotHeightUnit+graphMargin)
 		plotBot := plotTop + plotHeightUnit
 
-		gocv.Rectangle(&g.canvas, image.Rect(plotLeft, plotTop, plotRight, plotBot), dimWhite, 1)
+		_ = gocv.Rectangle(&g.canvas, image.Rect(plotLeft, plotTop, plotRight, plotBot), dimWhite, 1)
 
 		// Label
-		gocv.PutText(&g.canvas, s.label, image.Pt(plotLeft, plotTop-6),
+		_ = gocv.PutText(&g.canvas, s.label, image.Pt(plotLeft, plotTop-6),
 			gocv.FontHersheyPlain, 0.9, s.color, 1)
 
 		// Compute value range
@@ -106,9 +106,9 @@ func (g *GraphWindow) Update(times []float64, xs, ys []int) {
 		vRange := vMax - vMin
 
 		// Axis value labels
-		gocv.PutText(&g.canvas, fmtVal(vMax), image.Pt(2, plotTop+12),
+		_ = gocv.PutText(&g.canvas, fmtVal(vMax), image.Pt(2, plotTop+12),
 			gocv.FontHersheyPlain, 0.65, white, 1)
-		gocv.PutText(&g.canvas, fmtVal(vMin), image.Pt(2, plotBot-4),
+		_ = gocv.PutText(&g.canvas, fmtVal(vMin), image.Pt(2, plotBot-4),
 			gocv.FontHersheyPlain, 0.65, white, 1)
 
 		// Data lines
@@ -123,23 +123,23 @@ func (g *GraphWindow) Update(times []float64, xs, ys []int) {
 			py0 := plotTop + int(n0*float64(plotHeightUnit))
 			py1 := plotTop + int(n1*float64(plotHeightUnit))
 
-			gocv.Line(&g.canvas, image.Pt(px0, py0), image.Pt(px1, py1), s.color, 1)
+			_ = gocv.Line(&g.canvas, image.Pt(px0, py0), image.Pt(px1, py1), s.color, 1)
 		}
 	}
 
 	// Time labels at bottom
 	lastPlotBot := graphMargin + numPlots*(plotHeightUnit+graphMargin) - graphMargin
-	gocv.PutText(&g.canvas, fmt.Sprintf("%.1fs", tMin), image.Pt(plotLeft, lastPlotBot+15),
+	_ = gocv.PutText(&g.canvas, fmt.Sprintf("%.1fs", tMin), image.Pt(plotLeft, lastPlotBot+15),
 		gocv.FontHersheyPlain, 0.7, white, 1)
-	gocv.PutText(&g.canvas, fmt.Sprintf("%.1fs", tMax), image.Pt(plotRight-40, lastPlotBot+15),
+	_ = gocv.PutText(&g.canvas, fmt.Sprintf("%.1fs", tMax), image.Pt(plotRight-40, lastPlotBot+15),
 		gocv.FontHersheyPlain, 0.7, white, 1)
 
-	g.win.IMShow(g.canvas)
+	_ = g.win.IMShow(g.canvas)
 }
 
 func (g *GraphWindow) Close() {
-	g.canvas.Close()
-	g.win.Close()
+	_ = g.canvas.Close()
+	_ = g.win.Close()
 }
 
 // computeRealtimeDerivatives returns per-axis velocity and acceleration arrays.
@@ -196,7 +196,7 @@ func computeRealtimeDerivatives(times, xs, ys []float64) (vxOut, vyOut, axOut, a
 }
 
 func fillMat(mat *gocv.Mat, c color.RGBA) {
-	gocv.Rectangle(mat, image.Rect(0, 0, mat.Cols(), mat.Rows()), c, -1)
+	_ = gocv.Rectangle(mat, image.Rect(0, 0, mat.Cols(), mat.Rows()), c, -1)
 }
 
 func intsToFloats(vals []int) []float64 {

@@ -18,7 +18,7 @@ func WriteVideo(srcPath, dstPath string, points []TrackPoint, fps float64, start
 	if err != nil {
 		return fmt.Errorf("export: failed to open source video: %w", err)
 	}
-	defer src.Close()
+	defer func() { _ = src.Close() }()
 
 	w := int(src.Get(gocv.VideoCaptureFrameWidth))
 	h := int(src.Get(gocv.VideoCaptureFrameHeight))
@@ -27,7 +27,7 @@ func WriteVideo(srcPath, dstPath string, points []TrackPoint, fps float64, start
 	if err != nil {
 		return fmt.Errorf("export: failed to create video writer: %w", err)
 	}
-	defer writer.Close()
+	defer func() { _ = writer.Close() }()
 
 	// Build a map from frame number to point index for quick lookup
 	// Points are stored with Time = frameNum/fps, so frameNum = Time*fps
@@ -38,15 +38,12 @@ func WriteVideo(srcPath, dstPath string, points []TrackPoint, fps float64, start
 	}
 
 	frame := gocv.NewMat()
-	defer frame.Close()
+	defer func() { _ = frame.Close() }()
 
 	green := color.RGBA{0, 255, 0, 0}
 	frameNum := 0
 
-	for {
-		if !src.Read(&frame) || frame.Empty() {
-			break
-		}
+	for src.Read(&frame) && !frame.Empty() {
 
 		idx, hasPoint := pointByFrame[frameNum]
 
@@ -70,13 +67,13 @@ func WriteVideo(srcPath, dstPath string, points []TrackPoint, fps float64, start
 					}
 					prev := image.Pt(points[j-1].X, points[j-1].Y)
 					cur := image.Pt(points[j].X, points[j].Y)
-					gocv.Line(&frame, prev, cur, c, 1)
+					_ = gocv.Line(&frame, prev, cur, c, 1)
 				}
 			}
 
 			// Draw crosshair
-			gocv.Line(&frame, image.Pt(pt.X-10, pt.Y), image.Pt(pt.X+10, pt.Y), green, 2)
-			gocv.Line(&frame, image.Pt(pt.X, pt.Y-10), image.Pt(pt.X, pt.Y+10), green, 2)
+			_ = gocv.Line(&frame, image.Pt(pt.X-10, pt.Y), image.Pt(pt.X+10, pt.Y), green, 2)
+			_ = gocv.Line(&frame, image.Pt(pt.X, pt.Y-10), image.Pt(pt.X, pt.Y+10), green, 2)
 		}
 
 		if err := writer.Write(frame); err != nil {

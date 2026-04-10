@@ -35,7 +35,7 @@ func Open(path string) (*Reader, error) {
 	w := int(cap.Get(gocv.VideoCaptureFrameWidth))
 	h := int(cap.Get(gocv.VideoCaptureFrameHeight))
 	if w <= 0 || h <= 0 {
-		cap.Close()
+		_ = cap.Close()
 		return nil, fmt.Errorf("video: invalid dimensions %dx%d in %s", w, h, path)
 	}
 
@@ -64,5 +64,5 @@ func (r *Reader) Info() VideoInfo {
 }
 
 func (r *Reader) Close() {
-	r.cap.Close()
+	_ = r.cap.Close()
 }

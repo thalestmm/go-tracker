@@ -83,11 +83,11 @@ func TestFmtVal(t *testing.T) {
 		input float64
 		want  string
 	}{
-		{1234.5, "1234"},   // large: no decimals (%.0f rounds to even)
-		{42.7, "42.7"},     // medium: 1 decimal
-		{0.123, "0.12"},    // small: 2 decimals
-		{-500.0, "-500"},   // negative large
-		{0.0, "0.00"},      // zero
+		{1234.5, "1234"}, // large: no decimals (%.0f rounds to even)
+		{42.7, "42.7"},   // medium: 1 decimal
+		{0.123, "0.12"},  // small: 2 decimals
+		{-500.0, "-500"}, // negative large
+		{0.0, "0.00"},    // zero
 	}
 
 	for _, tc := range tests {

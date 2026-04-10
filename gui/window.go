@@ -11,15 +11,15 @@ import (
 type PauseAction int
 
 const (
-	PauseResume    PauseAction = iota // Space: resume tracking
-	PauseClick                        // Mouse click: realign
-	PauseStepFwd                      // Right arrow: step forward
-	PauseStepBack                     // Left arrow: step backward
+	PauseResume   PauseAction = iota // Space: resume tracking
+	PauseClick                       // Mouse click: realign
+	PauseStepFwd                     // Right arrow: step forward
+	PauseStepBack                    // Left arrow: step backward
 )
 
 type PauseResult struct {
-	Action   PauseAction
-	ClickPt  image.Point
+	Action  PauseAction
+	ClickPt image.Point
 }
 
 type Overlay struct {
@@ -58,17 +58,17 @@ func New(title string) *Window {
 // Returns the clicked point and true, or zero point and false if the user pressed Space to resume.
 func (w *Window) WaitClick(frame gocv.Mat, prompt string, overlay *Overlay) (image.Point, bool) {
 	display := frame.Clone()
-	defer display.Close()
+	defer func() { _ = display.Close() }()
 
 	if overlay != nil {
 		w.drawOverlay(&display, overlay)
 	}
 
-	gocv.PutText(&display, prompt, image.Pt(10, 30),
+	_ = gocv.PutText(&display, prompt, image.Pt(10, 30),
 		gocv.FontHersheyPlain, 1.0,
 		color.RGBA{0, 255, 0, 0}, 1)
 
-	w.win.IMShow(display)
+	_ = w.win.IMShow(display)
 
 	// Drain any stale clicks
 	select {
@@ -93,18 +93,18 @@ func (w *Window) WaitClick(frame gocv.Mat, prompt string, overlay *Overlay) (ima
 // Space=resume, Click=realign, Left/Right arrows=step frame.
 func (w *Window) WaitPause(frame gocv.Mat, overlay *Overlay) PauseResult {
 	display := frame.Clone()
-	defer display.Close()
+	defer func() { _ = display.Close() }()
 
 	if overlay != nil {
 		w.drawOverlay(&display, overlay)
 	}
 
 	prompt := "Click=realign  Space=resume  Arrows=step"
-	gocv.PutText(&display, prompt, image.Pt(10, 30),
+	_ = gocv.PutText(&display, prompt, image.Pt(10, 30),
 		gocv.FontHersheyPlain, 1.0,
 		color.RGBA{0, 255, 0, 0}, 1)
 
-	w.win.IMShow(display)
+	_ = w.win.IMShow(display)
 
 	// Drain stale clicks
 	select {
@@ -114,12 +114,12 @@ func (w *Window) WaitPause(frame gocv.Mat, overlay *Overlay) PauseResult {
 
 	for {
 		key := w.win.WaitKey(30)
-		switch {
-		case key == 32 || key == 'p' || key == 'P':
+		switch key {
+		case 32, 'p', 'P':
 			return PauseResult{Action: PauseResume}
-		case key == 2 || key == 81: // Left arrow (macOS / Linux)
+		case 2, 81: // Left arrow (macOS / Linux)
 			return PauseResult{Action: PauseStepBack}
-		case key == 3 || key == 83: // Right arrow (macOS / Linux)
+		case 3, 83: // Right arrow (macOS / Linux)
 			return PauseResult{Action: PauseStepFwd}
 		}
 		select {
@@ -147,27 +147,27 @@ func (w *Window) drawOverlay(display *gocv.Mat, overlay *Overlay) {
 				B: 0,
 				A: 0,
 			}
-			gocv.Line(display, overlay.Trail[i-1], overlay.Trail[i], c, 1)
+			_ = gocv.Line(display, overlay.Trail[i-1], overlay.Trail[i], c, 1)
 		}
 	}
 
 	// Crosshair at track position
 	p := overlay.TrackPos
-	gocv.Line(display, image.Pt(p.X-10, p.Y), image.Pt(p.X+10, p.Y), green, 2)
-	gocv.Line(display, image.Pt(p.X, p.Y-10), image.Pt(p.X, p.Y+10), green, 2)
+	_ = gocv.Line(display, image.Pt(p.X-10, p.Y), image.Pt(p.X+10, p.Y), green, 2)
+	_ = gocv.Line(display, image.Pt(p.X, p.Y-10), image.Pt(p.X, p.Y+10), green, 2)
 
 	// Full-frame axes through tracking point
 	if overlay.ShowAxes {
 		cyan := color.RGBA{255, 255, 0, 0}
 		fw := display.Cols()
 		fh := display.Rows()
-		gocv.Line(display, image.Pt(0, p.Y), image.Pt(fw, p.Y), cyan, 1)
-		gocv.Line(display, image.Pt(p.X, 0), image.Pt(p.X, fh), cyan, 1)
+		_ = gocv.Line(display, image.Pt(0, p.Y), image.Pt(fw, p.Y), cyan, 1)
+		_ = gocv.Line(display, image.Pt(p.X, 0), image.Pt(p.X, fh), cyan, 1)
 	}
 
 	// ROI rectangle
 	if !overlay.ROIRect.Empty() {
-		gocv.Rectangle(display, overlay.ROIRect, yellow, 1)
+		_ = gocv.Rectangle(display, overlay.ROIRect, yellow, 1)
 	}
 
 	// Confidence text
@@ -176,12 +176,12 @@ func (w *Window) drawOverlay(display *gocv.Mat, overlay *Overlay) {
 		confColor = red
 	}
 	confStr := fmt.Sprintf("Conf: %.2f", overlay.Confidence)
-	gocv.PutText(display, confStr, image.Pt(10, 25),
+	_ = gocv.PutText(display, confStr, image.Pt(10, 25),
 		gocv.FontHersheyPlain, 0.8, confColor, 1)
 
 	// Status text
 	if overlay.Status != "" {
-		gocv.PutText(display, overlay.Status, image.Pt(10, 50),
+		_ = gocv.PutText(display, overlay.Status, image.Pt(10, 50),
 			gocv.FontHersheyPlain, 0.8, yellow, 1)
 	}
 }
@@ -190,13 +190,13 @@ func (w *Window) drawOverlay(display *gocv.Mat, overlay *Overlay) {
 // Returns the key pressed (or -1 if none).
 func (w *Window) ShowFrame(frame gocv.Mat, overlay *Overlay, waitMs int) int {
 	display := frame.Clone()
-	defer display.Close()
+	defer func() { _ = display.Close() }()
 
 	if overlay != nil {
 		w.drawOverlay(&display, overlay)
 	}
 
-	w.win.IMShow(display)
+	_ = w.win.IMShow(display)
 	return w.win.WaitKey(waitMs)
 }
 
@@ -214,8 +214,8 @@ func (w *Window) WaitClickZoom(frame gocv.Mat, prompt string, zoomRadius int) (i
 
 		// Draw crosshair at selected point
 		green := color.RGBA{0, 255, 0, 0}
-		gocv.Line(&display, image.Pt(pt.X-10, pt.Y), image.Pt(pt.X+10, pt.Y), green, 2)
-		gocv.Line(&display, image.Pt(pt.X, pt.Y-10), image.Pt(pt.X, pt.Y+10), green, 2)
+		_ = gocv.Line(&display, image.Pt(pt.X-10, pt.Y), image.Pt(pt.X+10, pt.Y), green, 2)
+		_ = gocv.Line(&display, image.Pt(pt.X, pt.Y-10), image.Pt(pt.X, pt.Y+10), green, 2)
 
 		// Extract and zoom the region around the click
 		fw, fh := frame.Cols(), frame.Rows()
@@ -240,8 +240,8 @@ func (w *Window) WaitClickZoom(frame gocv.Mat, prompt string, zoomRadius int) (i
 		roi := frame.Region(image.Rect(x0, y0, x1, y1))
 		zoomSize := 4 * 2 * r // 4x magnification
 		zoomed := gocv.NewMat()
-		gocv.Resize(roi, &zoomed, image.Pt(zoomSize, zoomSize), 0, 0, gocv.InterpolationNearestNeighbor)
-		roi.Close()
+		_ = gocv.Resize(roi, &zoomed, image.Pt(zoomSize, zoomSize), 0, 0, gocv.InterpolationNearestNeighbor)
+		_ = roi.Close()
 
 		// Draw zoom inset in top-right corner with border
 		insetX := fw - zoomSize - 10
@@ -250,24 +250,24 @@ func (w *Window) WaitClickZoom(frame gocv.Mat, prompt string, zoomRadius int) (i
 			insetX = 0
 		}
 		insetRect := image.Rect(insetX, insetY, insetX+zoomSize, insetY+zoomSize)
-		gocv.Rectangle(&display, insetRect, color.RGBA{255, 255, 255, 0}, 2)
+		_ = gocv.Rectangle(&display, insetRect, color.RGBA{255, 255, 255, 0}, 2)
 
 		insetROI := display.Region(insetRect)
-		zoomed.CopyTo(&insetROI)
-		insetROI.Close()
-		zoomed.Close()
+		_ = zoomed.CopyTo(&insetROI)
+		_ = insetROI.Close()
+		_ = zoomed.Close()
 
 		// Draw crosshair in center of zoom inset
 		cx := insetX + zoomSize/2
 		cy := insetY + zoomSize/2
-		gocv.Line(&display, image.Pt(cx-8, cy), image.Pt(cx+8, cy), green, 1)
-		gocv.Line(&display, image.Pt(cx, cy-8), image.Pt(cx, cy+8), green, 1)
+		_ = gocv.Line(&display, image.Pt(cx-8, cy), image.Pt(cx+8, cy), green, 1)
+		_ = gocv.Line(&display, image.Pt(cx, cy-8), image.Pt(cx, cy+8), green, 1)
 
-		gocv.PutText(&display, "Enter=confirm, Click=reselect", image.Pt(10, 30),
+		_ = gocv.PutText(&display, "Enter=confirm, Click=reselect", image.Pt(10, 30),
 			gocv.FontHersheyPlain, 1.0, green, 1)
 
-		w.win.IMShow(display)
-		display.Close()
+		_ = w.win.IMShow(display)
+		_ = display.Close()
 
 		// Wait for confirmation (Enter/Space) or a new click to reselect
 		select {
@@ -314,20 +314,20 @@ func (w *Window) WaitTwoClicks(frame gocv.Mat, prompt1, prompt2 string) (image.P
 
 	// Show frame with first point marked, wait for second
 	display := frame.Clone()
-	defer display.Close()
-	gocv.Circle(&display, p1, 5, cyan, 2)
+	defer func() { _ = display.Close() }()
+	_ = gocv.Circle(&display, p1, 5, cyan, 2)
 	p2, _ := w.WaitClick(display, prompt2, nil)
 
 	// Show both points and the line between them
 	confirm := frame.Clone()
-	defer confirm.Close()
-	gocv.Circle(&confirm, p1, 5, cyan, 2)
-	gocv.Circle(&confirm, p2, 5, magenta, 2)
-	gocv.Line(&confirm, p1, p2, color.RGBA{255, 255, 255, 0}, 1)
-	gocv.PutText(&confirm, "Calibration set. Enter distance in terminal.", image.Pt(10, 30),
+	defer func() { _ = confirm.Close() }()
+	_ = gocv.Circle(&confirm, p1, 5, cyan, 2)
+	_ = gocv.Circle(&confirm, p2, 5, magenta, 2)
+	_ = gocv.Line(&confirm, p1, p2, color.RGBA{255, 255, 255, 0}, 1)
+	_ = gocv.PutText(&confirm, "Calibration set. Enter distance in terminal.", image.Pt(10, 30),
 		gocv.FontHersheyPlain, 1.0, color.RGBA{0, 255, 0, 0}, 1)
-	w.win.IMShow(confirm)
-	w.win.WaitKey(1)
+	_ = w.win.IMShow(confirm)
+	_ = w.win.WaitKey(1)
 
 	return p1, p2
 }
@@ -335,12 +335,12 @@ func (w *Window) WaitTwoClicks(frame gocv.Mat, prompt1, prompt2 string) (image.P
 // ShowTurboLabel shows the frame with a "TURBO MODE" label in the top-left.
 func (w *Window) ShowTurboLabel(frame gocv.Mat) {
 	display := frame.Clone()
-	defer display.Close()
+	defer func() { _ = display.Close() }()
 
-	gocv.PutText(&display, "TURBO MODE", image.Pt(10, 25),
+	_ = gocv.PutText(&display, "TURBO MODE", image.Pt(10, 25),
 		gocv.FontHersheyPlain, 1.0, color.RGBA{255, 240, 31, 0}, 1)
 
-	w.win.IMShow(display)
+	_ = w.win.IMShow(display)
 }
 
 // PollKey checks for key presses without rendering. Used in turbo mode.
@@ -349,5 +349,5 @@ func (w *Window) PollKey(waitMs int) int {
 }
 
 func (w *Window) Close() {
-	w.win.Close()
+	_ = w.win.Close()
 }

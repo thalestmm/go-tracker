@@ -145,31 +145,41 @@ func TestSetKeys(t *testing.T) {
 	cfg := Defaults()
 
 	// String key
-	cfg.set("output", "test.csv")
+	if err := cfg.set("output", "test.csv"); err != nil {
+		t.Fatalf("set output failed: %v", err)
+	}
 	if cfg.Output != "test.csv" {
 		t.Errorf("output: got %q", cfg.Output)
 	}
 
 	// Int key
-	cfg.set("template_size", "30")
+	if err := cfg.set("template_size", "30"); err != nil {
+		t.Fatalf("set template_size failed: %v", err)
+	}
 	if cfg.TemplateSize != 30 {
 		t.Errorf("template_size: got %d", cfg.TemplateSize)
 	}
 
 	// Float key
-	cfg.set("confidence", "0.75")
+	if err := cfg.set("confidence", "0.75"); err != nil {
+		t.Fatalf("set confidence failed: %v", err)
+	}
 	if cfg.Confidence != 0.75 {
 		t.Errorf("confidence: got %f", cfg.Confidence)
 	}
 
 	// Bool key
-	cfg.set("axes", "true")
+	if err := cfg.set("axes", "true"); err != nil {
+		t.Fatalf("set axes failed: %v", err)
+	}
 	if !cfg.Axes {
 		t.Error("axes: expected true")
 	}
 
 	// Hyphenated key (should work same as underscore)
-	cfg.set("search-margin", "50")
+	if err := cfg.set("search-margin", "50"); err != nil {
+		t.Fatalf("set search-margin failed: %v", err)
+	}
 	if cfg.SearchMargin != 50 {
 		t.Errorf("search_margin: got %d", cfg.SearchMargin)
 	}
