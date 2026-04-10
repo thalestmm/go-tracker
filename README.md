@@ -157,7 +157,7 @@ go-tracker -video <path.mp4> [options]
 | `-start-frame` | `0` | Start tracking from this frame number |
 | `-start-time` | `0` | Start tracking from this time in seconds (overrides `-start-frame`) |
 | `-axes` | `false` | Display X/Y reference axes through the tracking point |
-| `-turbo` | `false` | Skip rendering for maximum speed (1700+ FPS). Auto-pauses on lost track |
+| `-turbo` | `false` | Skip rendering for maximum speed (2000+ FPS). Auto-pauses on lost track |
 | `-trail` | `0` | Draw trajectory trail of last N positions (0=off) |
 | `-graph` | `false` | Open a real-time graph window showing X(t) and Y(t) |
 | `-smooth` | `0` | Smoothing window for graph display (e.g., 10). Does not affect CSV output |
@@ -383,7 +383,7 @@ On Apple M4 Pro, per-frame breakdown:
 | Normal | ~0.2 ms | ~0.5 ms | ~20 ms | ~20.7 ms | ~48 |
 | Turbo | ~0.2 ms | ~0.3 ms | 0 ms | ~0.6 ms | **2000+** |
 
-In normal mode, the bottleneck is the macOS GUI event loop (~10ms per `WaitKey`). Turbo mode (`-turbo`) skips all rendering and only pauses when the tracker loses confidence, achieving 1700+ FPS.
+In normal mode, the bottleneck is the macOS GUI event loop (~10ms per `WaitKey`). Turbo mode (`-turbo`) skips all rendering and only pauses when the tracker loses confidence, achieving 2000+ FPS.
 
 Performance metrics are printed after every run, broken down by decode, track, and display time.
 
