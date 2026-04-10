@@ -34,6 +34,7 @@ func main() {
 	showGraph := flag.Bool("graph", false, "Show real-time X(t) and Y(t) graph window")
 	trailLen := flag.Int("trail", 0, "Draw trajectory trail of last N positions (0=off)")
 	exportVideo := flag.String("export-video", "", "Export annotated video to this path (e.g. output.mp4)")
+	derivatives := flag.Bool("derivatives", false, "Include vx, vy, ax, ay columns in CSV output")
 	flag.Parse()
 
 	// --- 1.1: Input validation ---
@@ -249,6 +250,7 @@ func main() {
 		IncludeConfidence: *exportConf,
 		Scale:             pixelsPerUnit,
 		ScaleUnit:         *scaleUnit,
+		Derivatives:       *derivatives,
 	}
 	if err := export.WriteCSV(*outputPath, points, csvOpts); err != nil {
 		log.Fatalf("Failed to write CSV: %v", err)

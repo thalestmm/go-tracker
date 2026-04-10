@@ -70,12 +70,6 @@ Alternative output formats for students using pandas or polars. JSON is trivial 
 
 ---
 
-## Derivative columns (`-derivatives`)
-
-Optional computed columns in the output: `vx, vy, ax, ay` (velocity and acceleration via finite differences). Applied post-tracking as a simple pass over the collected points array. Students often compute these manually anyway, so having them built in saves time.
-
----
-
 ## ROI preview before tracking
 
 After clicking to select a tracking point, show the actual template patch and search region overlaid on the frame. User confirms with Enter or re-clicks. Prevents wasted tracking runs from bad selections, especially useful for beginners.
