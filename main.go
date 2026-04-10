@@ -13,11 +13,11 @@ import (
 
 	"gocv.io/x/gocv"
 
-	"github.com/thalesmeier/go-tracker/config"
-	"github.com/thalesmeier/go-tracker/export"
-	"github.com/thalesmeier/go-tracker/gui"
-	"github.com/thalesmeier/go-tracker/tracker"
-	"github.com/thalesmeier/go-tracker/video"
+	"github.com/thalestmm/go-tracker/config"
+	"github.com/thalestmm/go-tracker/export"
+	"github.com/thalestmm/go-tracker/gui"
+	"github.com/thalestmm/go-tracker/tracker"
+	"github.com/thalestmm/go-tracker/video"
 )
 
 func main() {

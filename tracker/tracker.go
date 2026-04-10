@@ -5,7 +5,7 @@ import (
 
 	"gocv.io/x/gocv"
 
-	"github.com/thalesmeier/go-tracker/export"
+	"github.com/thalestmm/go-tracker/export"
 )
 
 type State int

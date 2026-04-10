@@ -1,4 +1,4 @@
-module github.com/thalesmeier/go-tracker
+module github.com/thalestmm/go-tracker
 
 go 1.26.1
 

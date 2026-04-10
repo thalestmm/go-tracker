@@ -33,7 +33,7 @@ This is the easiest way to get started. You only need Docker installed.
 #### 2. Build the image
 
 ```bash
-git clone https://github.com/thalesmeier/go-tracker.git
+git clone https://github.com/thalestmm/go-tracker.git
 cd go-tracker
 docker build -t go-tracker .
 ```
@@ -124,7 +124,7 @@ sudo pacman -S opencv pkgconf
 #### Build
 
 ```bash
-git clone https://github.com/thalesmeier/go-tracker.git
+git clone https://github.com/thalestmm/go-tracker.git
 cd go-tracker
 go build -o go-tracker .
 ```
