@@ -6,6 +6,7 @@ import (
 	"image"
 	"log"
 	"os"
+	"time"
 
 	"gocv.io/x/gocv"
 
@@ -74,14 +75,22 @@ func main() {
 	frameNum := *startFrame
 	stopped := false
 
+	var totalDecode, totalTrack, totalDisplay time.Duration
+	var framesProcessed int
+
 	fmt.Println("Tracking... ESC=stop, Space=realign")
 	for !stopped {
 		frameNum++
+
+		decodeStart := time.Now()
 		if !reader.Read(&frame) || frame.Empty() {
 			break
 		}
+		totalDecode += time.Since(decodeStart)
 
+		trackStart := time.Now()
 		state, tp := t.ProcessFrame(frame, frameNum)
+		totalTrack += time.Since(trackStart)
 
 		if state == tracker.StatePausedForRealignment {
 			fmt.Printf("Lost track at frame %d. Click to realign.\n", frameNum)
@@ -94,10 +103,14 @@ func main() {
 			break
 		}
 
+		framesProcessed++
+
 		// Build overlay for display
+		displayStart := time.Now()
 		overlay := buildOverlay(t, tp, cfg, frameNum, info.FrameCount)
 		overlay.ShowAxes = *showAxes
 		key := win.ShowFrame(frame, overlay, 1)
+		totalDisplay += time.Since(displayStart)
 
 		switch {
 		case key == 27: // ESC
@@ -107,6 +120,25 @@ func main() {
 			fmt.Println("Manual realignment requested.")
 			realign(win, t, frame, *showAxes)
 		}
+	}
+
+	// Performance metrics
+	if framesProcessed > 0 {
+		totalPipeline := totalDecode + totalTrack + totalDisplay
+		avgDecode := totalDecode / time.Duration(framesProcessed)
+		avgTrack := totalTrack / time.Duration(framesProcessed)
+		avgDisplay := totalDisplay / time.Duration(framesProcessed)
+		avgTotal := totalPipeline / time.Duration(framesProcessed)
+		trackingFPS := float64(framesProcessed) / totalPipeline.Seconds()
+
+		fmt.Println("\n--- Performance ---")
+		fmt.Printf("Frames processed: %d\n", framesProcessed)
+		fmt.Printf("Tracking FPS:     %.1f\n", trackingFPS)
+		fmt.Printf("Avg per frame:    %v (decode: %v, track: %v, display: %v)\n",
+			avgTotal.Round(time.Microsecond),
+			avgDecode.Round(time.Microsecond),
+			avgTrack.Round(time.Microsecond),
+			avgDisplay.Round(time.Microsecond))
 	}
 
 	points := t.Points()
