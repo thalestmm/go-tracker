@@ -35,6 +35,7 @@ func main() {
 	trailLen := flag.Int("trail", 0, "Draw trajectory trail of last N positions (0=off)")
 	exportVideo := flag.String("export-video", "", "Export annotated video to this path (e.g. output.mp4)")
 	derivatives := flag.Bool("derivatives", false, "Include vx, vy, ax, ay columns in CSV output")
+	startTime := flag.Float64("start-time", 0, "Start tracking from this time in seconds (overrides -start-frame)")
 	flag.Parse()
 
 	// --- 1.1: Input validation ---
@@ -65,6 +66,12 @@ func main() {
 	info := reader.Info()
 	fmt.Printf("Video: %dx%d @ %.1f FPS, %d frames\n",
 		info.Width, info.Height, info.FPS, info.FrameCount)
+
+	// Convert start-time to start-frame if specified
+	if *startTime > 0 {
+		*startFrame = int(*startTime * info.FPS)
+		fmt.Printf("Starting at %.2fs (frame %d)\n", *startTime, *startFrame)
+	}
 
 	// --- 1.4: Validate start frame ---
 	if info.FrameCount > 0 && *startFrame >= info.FrameCount {
