@@ -148,7 +148,7 @@ func main() {
 	var graphTimes []float64
 	var graphXs, graphYs []int
 	if *showGraph {
-		graphWin = gui.NewGraphWindow("GoTracker - Graph")
+		graphWin = gui.NewGraphWindow("GoTracker - Graph", *derivatives)
 		defer graphWin.Close()
 	}
 
