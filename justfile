@@ -24,11 +24,11 @@ lint:
     golangci-lint run
 
 # Run fmt + lint + test
-check: fmt lint test
+check: fmt lint build test
 
 # Build and run with a video
 run video:
-    go build -o go-tracker . && ./go-tracker -video {{video}}
+    go build -o go-tracker . && ./go-tracker -video {{ video }}
 
 # Clean build artifacts
 clean:
