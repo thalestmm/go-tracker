@@ -38,9 +38,10 @@ func New(title string) *Window {
 	return w
 }
 
-// WaitClick displays a frame with a prompt and blocks until the user clicks.
+// WaitClick displays a frame with a prompt and blocks until the user clicks or presses Space to resume.
 // If overlay is non-nil, it is drawn on the frame (useful for showing axes at last position during pause).
-func (w *Window) WaitClick(frame gocv.Mat, prompt string, overlay *Overlay) image.Point {
+// Returns the clicked point and true, or zero point and false if the user pressed Space to resume.
+func (w *Window) WaitClick(frame gocv.Mat, prompt string, overlay *Overlay) (image.Point, bool) {
 	display := frame.Clone()
 	defer display.Close()
 
@@ -61,10 +62,13 @@ func (w *Window) WaitClick(frame gocv.Mat, prompt string, overlay *Overlay) imag
 	}
 
 	for {
-		w.win.WaitKey(30)
+		key := w.win.WaitKey(30)
+		if key == 32 || key == 'p' || key == 'P' { // Space or P to resume
+			return image.Point{}, false
+		}
 		select {
 		case pt := <-w.clickCh:
-			return pt
+			return pt, true
 		default:
 		}
 	}

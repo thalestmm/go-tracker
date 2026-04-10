@@ -56,7 +56,7 @@ func main() {
 	}
 
 	fmt.Println("Click on the point to track, then tracking begins.")
-	clickPt := win.WaitClick(frame, "Click the point to track", nil)
+	clickPt, _ := win.WaitClick(frame, "Click the point to track", nil)
 	fmt.Printf("Selected point: (%d, %d)\n", clickPt.X, clickPt.Y)
 
 	cfg := tracker.Config{
@@ -127,10 +127,15 @@ func realign(win *gui.Window, t *tracker.Tracker, frame gocv.Mat, showAxes bool)
 		pauseOverlay = &gui.Overlay{
 			TrackPos: t.LastPos(),
 			ShowAxes: true,
-			Status:   "PAUSED - Click to realign",
+			Status:   "PAUSED - Click to realign, Space to resume",
 		}
 	}
-	pt := win.WaitClick(frame, "Click to realign tracking point", pauseOverlay)
+	pt, clicked := win.WaitClick(frame, "Click to realign, Space to resume", pauseOverlay)
+	if !clicked {
+		fmt.Println("Resumed from last position.")
+		t.Resume()
+		return
+	}
 	t.Realign(frame, pt.X, pt.Y)
 	fmt.Printf("Realigned to (%d, %d)\n", pt.X, pt.Y)
 }

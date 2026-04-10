@@ -106,6 +106,10 @@ func (t *Tracker) Realign(frame gocv.Mat, x, y int) {
 	t.state = StateTracking
 }
 
+func (t *Tracker) Resume() {
+	t.state = StateTracking
+}
+
 func (t *Tracker) State() State {
 	return t.state
 }
