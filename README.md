@@ -389,6 +389,40 @@ Performance metrics are printed after every run, broken down by decode, track, a
 
 ---
 
+## Screenshots
+
+### Point selection with zoom preview
+
+After clicking on the object to track, a 4x zoomed inset appears in the top-right corner for precise confirmation.
+
+![Point selection with zoom preview](./assets/entrypoint-selection.png)
+
+### General tracking
+
+Real-time tracking with crosshair, search region, and confidence display.
+
+![General tracking](./assets/general-tracking.png)
+
+### Trajectory trail
+
+With `-trail N`, the last N tracked positions are drawn as a fading polyline behind the crosshair.
+
+![Trajectory trail mode](./assets/trail-mode.png)
+
+### Scale calibration
+
+With `-calibrate`, click two reference points with a known distance to convert pixel coordinates to real-world units.
+
+![Calibration mode](./assets/calibration-mode.png)
+
+### Real-time graphs
+
+With `-graph -derivatives`, live plots of position, velocity, and acceleration are shown in a separate window.
+
+![Real-time graph with derivatives](./assets/graph-mode.png)
+
+---
+
 ## Troubleshooting
 
 ### "Failed to open video"
