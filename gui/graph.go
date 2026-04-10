@@ -19,12 +19,13 @@ type GraphWindow struct {
 	win         *gocv.Window
 	canvas      gocv.Mat
 	derivatives bool
+	smoothN     int // moving average window size; 0 = no smoothing
 }
 
-func NewGraphWindow(title string, derivatives bool) *GraphWindow {
+func NewGraphWindow(title string, derivatives bool, smoothN int) *GraphWindow {
 	win := gocv.NewWindow(title)
 	canvas := gocv.NewMat()
-	return &GraphWindow{win: win, canvas: canvas, derivatives: derivatives}
+	return &GraphWindow{win: win, canvas: canvas, derivatives: derivatives, smoothN: smoothN}
 }
 
 func (g *GraphWindow) Update(times []float64, xs, ys []int) {
@@ -63,18 +64,25 @@ func (g *GraphWindow) Update(times []float64, xs, ys []int) {
 	xf := intsToFloats(xs)
 	yf := intsToFloats(ys)
 
+	sm := func(vals []float64) []float64 {
+		if g.smoothN > 1 {
+			return movingAverage(vals, g.smoothN)
+		}
+		return vals
+	}
+
 	plots := []series{
-		{"X(t)", color.RGBA{255, 255, 0, 0}, xf},
-		{"Y(t)", color.RGBA{255, 0, 255, 0}, yf},
+		{"X(t)", color.RGBA{255, 255, 0, 0}, sm(xf)},
+		{"Y(t)", color.RGBA{255, 0, 255, 0}, sm(yf)},
 	}
 
 	if g.derivatives {
 		vx, vy, ax, ay := computeRealtimeDerivatives(times, xf, yf)
 		plots = append(plots,
-			series{"Vx(t)", color.RGBA{0, 200, 255, 0}, vx},
-			series{"Vy(t)", color.RGBA{0, 255, 200, 0}, vy},
-			series{"Ax(t)", color.RGBA{0, 128, 255, 0}, ax},
-			series{"Ay(t)", color.RGBA{0, 255, 128, 0}, ay},
+			series{"Vx(t)", color.RGBA{0, 200, 255, 0}, sm(vx)},
+			series{"Vy(t)", color.RGBA{0, 255, 200, 0}, sm(vy)},
+			series{"Ax(t)", color.RGBA{0, 128, 255, 0}, sm(ax)},
+			series{"Ay(t)", color.RGBA{0, 255, 128, 0}, sm(ay)},
 		)
 	}
 
@@ -233,4 +241,30 @@ func fmtVal(v float64) string {
 		return fmt.Sprintf("%.1f", v)
 	}
 	return fmt.Sprintf("%.2f", v)
+}
+
+// movingAverage applies a centered moving average with the given window size.
+func movingAverage(vals []float64, window int) []float64 {
+	n := len(vals)
+	if n == 0 || window <= 1 {
+		return vals
+	}
+	out := make([]float64, n)
+	half := window / 2
+	for i := 0; i < n; i++ {
+		lo := i - half
+		hi := i + half
+		if lo < 0 {
+			lo = 0
+		}
+		if hi >= n {
+			hi = n - 1
+		}
+		sum := 0.0
+		for j := lo; j <= hi; j++ {
+			sum += vals[j]
+		}
+		out[i] = sum / float64(hi-lo+1)
+	}
+	return out
 }

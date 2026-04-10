@@ -36,6 +36,7 @@ func main() {
 	exportVideo := flag.String("export-video", "", "Export annotated video to this path (e.g. output.mp4)")
 	derivatives := flag.Bool("derivatives", false, "Include vx, vy, ax, ay columns in CSV output")
 	startTime := flag.Float64("start-time", 0, "Start tracking from this time in seconds (overrides -start-frame)")
+	smooth := flag.Int("smooth", 0, "Smoothing window for graph display (0=off, e.g. 5 or 10). Does not affect CSV output.")
 	flag.Parse()
 
 	// --- 1.1: Input validation ---
@@ -155,7 +156,7 @@ func main() {
 	var graphTimes []float64
 	var graphXs, graphYs []int
 	if *showGraph {
-		graphWin = gui.NewGraphWindow("GoTracker - Graph", *derivatives)
+		graphWin = gui.NewGraphWindow("GoTracker - Graph", *derivatives, *smooth)
 		defer graphWin.Close()
 	}
 
