@@ -44,12 +44,6 @@ After realigning, pressing `u` or `Ctrl+Z` reverts to the previous template and 
 
 ---
 
-## Batch processing
-
-Accept a directory of videos via `-batch <dir>`, process each sequentially with the same tracking parameters. Output one CSV per video with matching filenames. Useful for repetitive lab work where the same experiment is recorded across multiple trials.
-
----
-
 ## JSON/Parquet output (`-format json|parquet`)
 
 Alternative output formats for students using pandas or polars. JSON is trivial to add; Parquet would need a third-party dependency. Only add if there's actual demand — CSV is universal.
