@@ -58,7 +58,7 @@ func main() {
 	// Config file flag is parsed first
 	configPath := flag.String("config", "", "Path to config file (default: ./go-tracker.toml)")
 
-	videoPath := flag.String("video", "", "Path to MP4 video file")
+	videoPath := flag.String("video", "", "Path to video file (.mp4, .mov, .avi, .mkv)")
 	batchDir := flag.String("batch", "", "Process all videos in this directory sequentially (mutually exclusive with -video)")
 	outputPath := flag.String("output", "", "Output CSV file path (ignored in -batch mode)")
 	templateSize := flag.Int("template-size", 0, "Template half-size in pixels")
