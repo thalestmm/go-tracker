@@ -7,6 +7,8 @@ import (
 	"image"
 	"log"
 	"os"
+	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -20,12 +22,45 @@ import (
 	"github.com/thalestmm/go-tracker/video"
 )
 
+type runFlags struct {
+	startFrame   int
+	startTime    float64
+	showAxes     bool
+	turbo        bool
+	exportConf   bool
+	calibrate    bool
+	scaleUnit    string
+	showGraph    bool
+	trailLen     int
+	derivatives  bool
+	smooth       int
+}
+
+type batchJob struct {
+	videoPath       string
+	outputPath      string
+	exportVideoPath string
+}
+
+type batchFailure struct {
+	path string
+	err  error
+}
+
+var videoExts = map[string]bool{
+	".mp4": true,
+	".mov": true,
+	".avi": true,
+	".mkv": true,
+}
+
 func main() {
 	// Config file flag is parsed first
 	configPath := flag.String("config", "", "Path to config file (default: ./go-tracker.toml)")
 
-	videoPath := flag.String("video", "", "Path to MP4 video file (required)")
-	outputPath := flag.String("output", "", "Output CSV file path")
+	videoPath := flag.String("video", "", "Path to MP4 video file")
+	batchDir := flag.String("batch", "", "Process all videos in this directory sequentially (mutually exclusive with -video)")
+	outputPath := flag.String("output", "", "Output CSV file path (ignored in -batch mode)")
 	templateSize := flag.Int("template-size", 0, "Template half-size in pixels")
 	searchMargin := flag.Int("search-margin", 0, "Search margin in pixels")
 	confidence := flag.Float64("confidence", 0, "Min confidence threshold (0-1)")
@@ -37,7 +72,7 @@ func main() {
 	scaleUnit := flag.String("unit", "", "Unit label for calibrated output (e.g. m, cm, mm)")
 	showGraph := flag.Bool("graph", false, "Show real-time X(t) and Y(t) graph window")
 	trailLen := flag.Int("trail", 0, "Draw trajectory trail of last N positions (0=off)")
-	exportVideo := flag.String("export-video", "", "Export annotated video to this path (e.g. output.mp4)")
+	exportVideo := flag.String("export-video", "", "Export annotated video (path in single mode; any non-empty value enables per-video auto-naming in -batch mode)")
 	derivatives := flag.Bool("derivatives", false, "Include vx, vy, ax, ay columns in CSV output")
 	startTime := flag.Float64("start-time", 0, "Start tracking from this time in seconds (overrides -start-frame)")
 	smooth := flag.Int("smooth", 0, "Smoothing window for graph display (0=off, e.g. 5 or 10). Does not affect CSV output.")
@@ -104,11 +139,14 @@ func main() {
 		*startTime = cfg.StartTime
 	}
 
-	// --- 1.1: Input validation ---
-	if *videoPath == "" {
-		fmt.Fprintf(os.Stderr, "Usage: go-tracker -video <path.mp4> [options]\n")
+	// --- Input validation ---
+	if *videoPath == "" && *batchDir == "" {
+		fmt.Fprintf(os.Stderr, "Usage: go-tracker (-video <path.mp4> | -batch <dir>) [options]\n")
 		flag.PrintDefaults()
 		os.Exit(1)
+	}
+	if *videoPath != "" && *batchDir != "" {
+		log.Fatalf("-video and -batch are mutually exclusive")
 	}
 	if *confidence < 0.0 || *confidence > 1.0 {
 		log.Fatalf("Confidence must be between 0.0 and 1.0, got %.2f", *confidence)
@@ -123,78 +161,6 @@ func main() {
 		log.Fatalf("Start frame must be non-negative, got %d", *startFrame)
 	}
 
-	reader, err := video.Open(*videoPath)
-	if err != nil {
-		log.Fatalf("Failed to open video: %v", err)
-	}
-	defer reader.Close()
-
-	info := reader.Info()
-	fmt.Printf("Video: %dx%d @ %.1f FPS, %d frames\n",
-		info.Width, info.Height, info.FPS, info.FrameCount)
-
-	// Convert start-time to start-frame if specified
-	if *startTime > 0 {
-		*startFrame = int(*startTime * info.FPS)
-		fmt.Printf("Starting at %.2fs (frame %d)\n", *startTime, *startFrame)
-	}
-
-	// --- 1.4: Validate start frame ---
-	if info.FrameCount > 0 && *startFrame >= info.FrameCount {
-		log.Fatalf("Start frame %d exceeds video length (%d frames)", *startFrame, info.FrameCount)
-	}
-
-	// --- 1.4: Validate template fits in video ---
-	minDim := info.Width
-	if info.Height < minDim {
-		minDim = info.Height
-	}
-	roiSize := 2*(*templateSize+*searchMargin) + 1
-	if roiSize > minDim {
-		log.Fatalf("Template + margin (%d px) exceeds smallest video dimension (%d px). Reduce -template-size or -search-margin.", roiSize, minDim)
-	}
-
-	if *startFrame > 0 {
-		_ = reader.Seek(*startFrame)
-	}
-
-	win := gui.New("GoTracker")
-	defer win.Close()
-
-	frame := gocv.NewMat()
-	defer func() { _ = frame.Close() }()
-
-	if !reader.Read(&frame) || frame.Empty() {
-		log.Fatalf("Failed to read first frame")
-	}
-
-	// --- 2.1: Scale calibration ---
-	var pixelsPerUnit float64
-	if *calibrate {
-		fmt.Println("Calibration: click two reference points with a known distance.")
-		p1, p2 := win.WaitTwoClicks(frame,
-			"Click first calibration point",
-			"Click second calibration point")
-		fmt.Printf("Calibration points: (%d,%d) -> (%d,%d)\n", p1.X, p1.Y, p2.X, p2.Y)
-
-		dist := readFloat("Enter the real-world distance between these points (in " + *scaleUnit + "): ")
-		if dist <= 0 {
-			log.Fatalf("Distance must be positive")
-		}
-		pixelsPerUnit = export.ComputeScale([2]int{p1.X, p1.Y}, [2]int{p2.X, p2.Y}, dist)
-		fmt.Printf("Scale: %.2f pixels/%s\n", pixelsPerUnit, *scaleUnit)
-	}
-
-	// --- Point selection with zoom preview ---
-	fmt.Println("Click on the point to track. A zoom inset will appear for confirmation.")
-	clickPt, _ := win.WaitClickZoom(frame, "Click the point to track", *templateSize+5)
-
-	// --- 1.4: Validate click is within frame ---
-	if clickPt.X < 0 || clickPt.X >= info.Width || clickPt.Y < 0 || clickPt.Y >= info.Height {
-		log.Fatalf("Selected point (%d, %d) is outside frame bounds", clickPt.X, clickPt.Y)
-	}
-	fmt.Printf("Selected point: (%d, %d)\n", clickPt.X, clickPt.Y)
-
 	tcfg := tracker.Config{
 		TemplateSize:        *templateSize,
 		SearchMargin:        *searchMargin,
@@ -203,29 +169,184 @@ func main() {
 		MaxSearchMargin:     120,
 	}
 
+	flags := runFlags{
+		startFrame:  *startFrame,
+		startTime:   *startTime,
+		showAxes:    *showAxes,
+		turbo:       *turbo,
+		exportConf:  *exportConf,
+		calibrate:   *calibrate,
+		scaleUnit:   *scaleUnit,
+		showGraph:   *showGraph,
+		trailLen:    *trailLen,
+		derivatives: *derivatives,
+		smooth:      *smooth,
+	}
+
+	jobs, err := buildJobs(*batchDir, *videoPath, *outputPath, *exportVideo)
+	if err != nil {
+		log.Fatalf("%v", err)
+	}
+	if len(jobs) == 0 {
+		log.Fatalf("No video files found in %s", *batchDir)
+	}
+	if *batchDir != "" && *outputPath != "" && *outputPath != cfg.Output {
+		fmt.Fprintf(os.Stderr, "warning: -output is ignored in -batch mode; CSV names derived from video filenames\n")
+	}
+
+	win := gui.New("GoTracker")
+	defer win.Close()
+
+	var failures []batchFailure
+	for i, j := range jobs {
+		if len(jobs) > 1 {
+			fmt.Printf("\n=== [%d/%d] %s ===\n", i+1, len(jobs), j.videoPath)
+		}
+		if err := runSingle(j, win, tcfg, flags); err != nil {
+			log.Printf("FAILED %s: %v", j.videoPath, err)
+			failures = append(failures, batchFailure{j.videoPath, err})
+			continue
+		}
+	}
+
+	if *batchDir != "" {
+		succeeded := len(jobs) - len(failures)
+		fmt.Printf("\n=== Batch done: %d succeeded, %d failed ===\n", succeeded, len(failures))
+		for _, f := range failures {
+			fmt.Printf("  FAIL %s: %v\n", f.path, f.err)
+		}
+		if len(failures) > 0 {
+			os.Exit(1)
+		}
+	} else if len(failures) > 0 {
+		// Single-video mode: propagate the error as a fatal exit.
+		log.Fatalf("%v", failures[0].err)
+	}
+}
+
+// buildJobs expands the CLI inputs into a list of per-video jobs.
+func buildJobs(batchDir, videoPath, outputPath, exportVideo string) ([]batchJob, error) {
+	if batchDir == "" {
+		return []batchJob{{
+			videoPath:       videoPath,
+			outputPath:      outputPath,
+			exportVideoPath: exportVideo,
+		}}, nil
+	}
+
+	entries, err := os.ReadDir(batchDir)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read batch dir: %w", err)
+	}
+
+	var jobs []batchJob
+	for _, e := range entries {
+		if e.IsDir() {
+			continue
+		}
+		name := e.Name()
+		ext := strings.ToLower(filepath.Ext(name))
+		if !videoExts[ext] {
+			continue
+		}
+		base := strings.TrimSuffix(name, filepath.Ext(name))
+		in := filepath.Join(batchDir, name)
+		out := filepath.Join(batchDir, base+".csv")
+		var ev string
+		if exportVideo != "" {
+			ev = filepath.Join(batchDir, base+"_annotated.mp4")
+		}
+		jobs = append(jobs, batchJob{videoPath: in, outputPath: out, exportVideoPath: ev})
+	}
+	sort.Slice(jobs, func(i, j int) bool { return jobs[i].videoPath < jobs[j].videoPath })
+	return jobs, nil
+}
+
+// runSingle runs the full tracking pipeline against one video. Errors are
+// returned rather than fatal so batch mode can continue past failures.
+func runSingle(job batchJob, win *gui.Window, tcfg tracker.Config, flags runFlags) error {
+	reader, err := video.Open(job.videoPath)
+	if err != nil {
+		return fmt.Errorf("failed to open video: %w", err)
+	}
+	defer reader.Close()
+
+	info := reader.Info()
+	fmt.Printf("Video: %dx%d @ %.1f FPS, %d frames\n",
+		info.Width, info.Height, info.FPS, info.FrameCount)
+
+	startFrame := flags.startFrame
+	if flags.startTime > 0 {
+		startFrame = int(flags.startTime * info.FPS)
+		fmt.Printf("Starting at %.2fs (frame %d)\n", flags.startTime, startFrame)
+	}
+
+	if info.FrameCount > 0 && startFrame >= info.FrameCount {
+		return fmt.Errorf("start frame %d exceeds video length (%d frames)", startFrame, info.FrameCount)
+	}
+
+	minDim := min(info.Width, info.Height)
+	roiSize := 2*(tcfg.TemplateSize+tcfg.SearchMargin) + 1
+	if roiSize > minDim {
+		return fmt.Errorf("template + margin (%d px) exceeds smallest video dimension (%d px). Reduce -template-size or -search-margin", roiSize, minDim)
+	}
+
+	if startFrame > 0 {
+		_ = reader.Seek(startFrame)
+	}
+
+	frame := gocv.NewMat()
+	defer func() { _ = frame.Close() }()
+
+	if !reader.Read(&frame) || frame.Empty() {
+		return fmt.Errorf("failed to read first frame")
+	}
+
+	var pixelsPerUnit float64
+	if flags.calibrate {
+		fmt.Println("Calibration: click two reference points with a known distance.")
+		p1, p2 := win.WaitTwoClicks(frame,
+			"Click first calibration point",
+			"Click second calibration point")
+		fmt.Printf("Calibration points: (%d,%d) -> (%d,%d)\n", p1.X, p1.Y, p2.X, p2.Y)
+
+		dist := readFloat("Enter the real-world distance between these points (in " + flags.scaleUnit + "): ")
+		if dist <= 0 {
+			return fmt.Errorf("distance must be positive")
+		}
+		pixelsPerUnit = export.ComputeScale([2]int{p1.X, p1.Y}, [2]int{p2.X, p2.Y}, dist)
+		fmt.Printf("Scale: %.2f pixels/%s\n", pixelsPerUnit, flags.scaleUnit)
+	}
+
+	fmt.Println("Click on the point to track. A zoom inset will appear for confirmation.")
+	clickPt, _ := win.WaitClickZoom(frame, "Click the point to track", tcfg.TemplateSize+5)
+
+	if clickPt.X < 0 || clickPt.X >= info.Width || clickPt.Y < 0 || clickPt.Y >= info.Height {
+		return fmt.Errorf("selected point (%d, %d) is outside frame bounds", clickPt.X, clickPt.Y)
+	}
+	fmt.Printf("Selected point: (%d, %d)\n", clickPt.X, clickPt.Y)
+
 	t := tracker.New(tcfg, info.FPS)
 	defer t.Close()
 	t.Initialize(frame, clickPt.X, clickPt.Y)
 
-	frameNum := *startFrame
+	frameNum := startFrame
 	stopped := false
 
 	var totalDecode, totalTrack, totalDisplay time.Duration
 	var framesProcessed int
 
-	// Trail buffer for trajectory overlay
 	var trailBuf []image.Point
 
-	// Graph window for real-time plotting
 	var graphWin *gui.GraphWindow
 	var graphTimes []float64
 	var graphXs, graphYs []int
-	if *showGraph {
-		graphWin = gui.NewGraphWindow("GoTracker - Graph", *derivatives, *smooth)
+	if flags.showGraph {
+		graphWin = gui.NewGraphWindow("GoTracker - Graph", flags.derivatives, flags.smooth)
 		defer graphWin.Close()
 	}
 
-	if *turbo {
+	if flags.turbo {
 		fmt.Println("Tracking (turbo mode)... auto-pauses on lost track")
 		win.ShowTurboLabel(frame)
 		win.PollKey(1)
@@ -248,7 +369,7 @@ func main() {
 
 		if state == tracker.StatePausedForRealignment {
 			fmt.Printf("Lost track at frame %d. Click to realign.\n", frameNum)
-			frameNum = pauseLoop(win, t, reader, &frame, frameNum, *showAxes)
+			frameNum = pauseLoop(win, t, reader, &frame, frameNum, flags.showAxes)
 			state, tp = t.ProcessFrame(frame, frameNum)
 		}
 
@@ -258,15 +379,13 @@ func main() {
 
 		framesProcessed++
 
-		// Update trail buffer
-		if *trailLen > 0 && tp != nil {
+		if flags.trailLen > 0 && tp != nil {
 			trailBuf = append(trailBuf, image.Pt(tp.X, tp.Y))
-			if len(trailBuf) > *trailLen {
-				trailBuf = trailBuf[len(trailBuf)-*trailLen:]
+			if len(trailBuf) > flags.trailLen {
+				trailBuf = trailBuf[len(trailBuf)-flags.trailLen:]
 			}
 		}
 
-		// Update graph with new data point
 		if graphWin != nil && tp != nil {
 			graphTimes = append(graphTimes, tp.Time)
 			graphXs = append(graphXs, tp.X)
@@ -274,10 +393,10 @@ func main() {
 			graphWin.Update(graphTimes, graphXs, graphYs)
 		}
 
-		if !*turbo {
+		if !flags.turbo {
 			displayStart := time.Now()
 			overlay := buildOverlay(t, tp, tcfg, frameNum, info.FrameCount)
-			overlay.ShowAxes = *showAxes
+			overlay.ShowAxes = flags.showAxes
 			overlay.Trail = trailBuf
 			key := win.ShowFrame(frame, overlay, 1)
 			totalDisplay += time.Since(displayStart)
@@ -288,12 +407,11 @@ func main() {
 				stopped = true
 			case 32, 'p', 'P': // Space or P
 				fmt.Println("Paused.")
-				frameNum = pauseLoop(win, t, reader, &frame, frameNum, *showAxes)
+				frameNum = pauseLoop(win, t, reader, &frame, frameNum, flags.showAxes)
 			}
 		}
 	}
 
-	// Performance metrics
 	if framesProcessed > 0 {
 		totalPipeline := totalDecode + totalTrack + totalDisplay
 		avgDecode := totalDecode / time.Duration(framesProcessed)
@@ -315,30 +433,30 @@ func main() {
 	points := t.Points()
 	if len(points) == 0 {
 		fmt.Println("No tracking data collected.")
-		return
+		return nil
 	}
 
-	// --- 1.2 + 2.1: CSV export with options ---
 	csvOpts := export.CSVOptions{
-		IncludeConfidence: *exportConf,
+		IncludeConfidence: flags.exportConf,
 		Scale:             pixelsPerUnit,
-		ScaleUnit:         *scaleUnit,
-		Derivatives:       *derivatives,
+		ScaleUnit:         flags.scaleUnit,
+		Derivatives:       flags.derivatives,
 	}
-	if err := export.WriteCSV(*outputPath, points, csvOpts); err != nil {
-		log.Fatalf("Failed to write CSV: %v", err)
+	if err := export.WriteCSV(job.outputPath, points, csvOpts); err != nil {
+		return fmt.Errorf("failed to write CSV: %w", err)
 	}
-	fmt.Printf("Exported %d points to %s\n", len(points), *outputPath)
+	fmt.Printf("Exported %d points to %s\n", len(points), job.outputPath)
 
-	// --- Annotated video export ---
-	if *exportVideo != "" {
-		fmt.Printf("Exporting annotated video to %s...\n", *exportVideo)
-		vidOpts := export.VideoOptions{TrailLen: *trailLen}
-		if err := export.WriteVideo(*videoPath, *exportVideo, points, info.FPS, *startFrame, vidOpts); err != nil {
-			log.Fatalf("Failed to export video: %v", err)
+	if job.exportVideoPath != "" {
+		fmt.Printf("Exporting annotated video to %s...\n", job.exportVideoPath)
+		vidOpts := export.VideoOptions{TrailLen: flags.trailLen}
+		if err := export.WriteVideo(job.videoPath, job.exportVideoPath, points, info.FPS, startFrame, vidOpts); err != nil {
+			return fmt.Errorf("failed to export video: %w", err)
 		}
-		fmt.Printf("Video exported to %s\n", *exportVideo)
+		fmt.Printf("Video exported to %s\n", job.exportVideoPath)
 	}
+
+	return nil
 }
 
 // pauseLoop handles the pause state: user can resume, realign, or step frames.
